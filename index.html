@@ -280,6 +280,7 @@
                 <button class="btn" onclick="loadEquipmentData()">🔄 Refresh Equipment List</button>
                 <button class="btn" onclick="exportEquipmentCSV()">💾 Download Updated CSV</button>
                 <button class="btn" onclick="importEquipmentCSV()">📁 Import Equipment CSV</button>
+                <button class="btn" onclick="updatePMFrequencies()">🔧 Update PM Frequencies</button>
             </div>
             
             <div id="equipment-message-container"></div>
@@ -681,17 +682,16 @@ No report generated yet. Click "Generate Report" to create a performance report.
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
         import { getDatabase, ref, push, set, get, remove, onValue, serverTimestamp, query, orderByChild, limitToLast, startAt, endAt } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
-        // TODO: Replace with YOUR Firebase configuration
         // Firebase configuration
-		const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyDTq2VdvCBD3IGeLoArkCqwp4PyEpJs55Q",
-			authDomain: "pm-maintenance-live-doc.firebaseapp.com",
-			databaseURL: "https://pm-maintenance-live-doc-default-rtdb.firebaseio.com/",  // ← MAKE SURE THIS HAS THE SLASH
-			projectId: "pm-maintenance-live-doc",
-			storageBucket: "pm-maintenance-live-doc.firebasestorage.app",
-			messagingSenderId: "238950691141",
-			appId: "1:238950691141:web:59a58cb2aef4cad17e8e2c"
-		};
+            authDomain: "pm-maintenance-live-doc.firebaseapp.com",
+            databaseURL: "https://pm-maintenance-live-doc-default-rtdb.firebaseio.com/",
+            projectId: "pm-maintenance-live-doc",
+            storageBucket: "pm-maintenance-live-doc.firebasestorage.app",
+            messagingSenderId: "238950691141",
+            appId: "1:238950691141:web:59a58cb2aef4cad17e8e2c"
+        };
 
         // Initialize Firebase
         let app, database;
@@ -726,10 +726,10 @@ No report generated yet. Click "Generate Report" to create a performance report.
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            initializeAppData();
+            initializeApp();
         });
 
-        function initializeAppData() {
+        function initializeApp() {
             // Set default dates
             setDefaultDates();
             
@@ -837,1146 +837,1232 @@ No report generated yet. Click "Generate Report" to create a performance report.
                         pm_frequency: value.pm_frequency || 'Monthly'
                     }));
                     displayEquipmentData(equipmentData);
-                    showContainer('equipment-container');
-                } else {
-                    equipmentData = [];
-                    displayEquipmentData([]);
-                    showContainer('equipment-container');
-                }
-            } catch (error) {
-                console.error('Error loading equipment:', error);
-                showMessage('equipment-list', 'error', 'Failed to load equipment data: ' + error.message);
-            } finally {
-                hideLoading('equipment-loading');
-            }
-        }
+                   showContainer('equipment-container');
+               } else {
+                   equipmentData = [];
+                   displayEquipmentData([]);
+                   showContainer('equipment-container');
+               }
+           } catch (error) {
+               console.error('Error loading equipment:', error);
+               showMessage('equipment-list', 'error', 'Failed to load equipment data: ' + error.message);
+           } finally {
+               hideLoading('equipment-loading');
+           }
+       }
 
-        function displayEquipmentData(data) {
-            const tbody = document.getElementById('equipment-tbody');
-            tbody.innerHTML = '';
-            
-            data.forEach(equipment => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${equipment.sap_material_no || ''}</td>
-                    <td>${equipment.bfm_equipment_no}</td>
-                    <td>${equipment.description}</td>
-                    <td>${equipment.site_location || ''}</td>
-                    <td>${equipment.last_pm_date || ''}</td>
-                    <td>${equipment.next_pm_date || ''}</td>
-                    <td>${equipment.pm_frequency}</td>
-                `;
-            });
-        }
+       // Update PM Frequencies for existing equipment
+       window.updatePMFrequencies = async function() {
+           if (!isConnected) {
+               showMessage('equipment-list', 'error', 'Cannot update frequencies - Firebase not connected');
+               return;
+           }
+           
+           if (!confirm('This will set PM frequency based on equipment type for all equipment that currently has undefined frequency. Continue?')) {
+               return;
+           }
+           
+           try {
+               showMessage('equipment-list', 'success', '⏳ Updating PM frequencies...');
+               
+               const equipmentRef = ref(database, 'equipment');
+               const snapshot = await get(equipmentRef);
+               
+               if (snapshot.exists()) {
+                   const equipmentData = snapshot.val();
+                   let updateCount = 0;
+                   
+                   for (const [key, equipment] of Object.entries(equipmentData)) {
+                       if (!equipment.pm_frequency || equipment.pm_frequency === 'undefined') {
+                           // Set default frequency based on equipment type or default to Monthly
+                           let defaultFrequency = 'Monthly';
+                           
+                           // Logic to determine frequency based on equipment description
+                           const desc = (equipment.description || '').toUpperCase();
+                           if (desc.includes('DRILL') || desc.includes('JIG')) {
+                               defaultFrequency = 'Quarterly';
+                           } else if (desc.includes('FLOOR')) {
+                               defaultFrequency = 'Weekly';
+                           } else if (desc.includes('FITTING') || desc.includes('CORNER')) {
+                               defaultFrequency = 'Bi-Monthly';
+                           }
+                           
+                           const updatedEquipment = {
+                               ...equipment,
+                               pm_frequency: defaultFrequency,
+                               updated_date: new Date().toISOString()
+                           };
+                           
+                           await set(ref(database, `equipment/${key}`), updatedEquipment);
+                           updateCount++;
+                       }
+                   }
+                   
+                   showMessage('equipment-list', 'success', 
+                       `✅ Updated PM frequencies for ${updateCount} equipment items!`);
+                   await loadEquipmentData();
+               } else {
+                   showMessage('equipment-list', 'error', 'No equipment data found');
+               }
+           } catch (error) {
+               console.error('Error updating PM frequencies:', error);
+               showMessage('equipment-list', 'error', '❌ Failed to update PM frequencies: ' + error.message);
+           }
+       }
 
-        // Equipment Search
-        window.searchEquipment = function() {
-            const searchTerm = document.getElementById('equipment-search').value.trim().toLowerCase();
-            const selectElement = document.getElementById('selected-equipment');
-            
-            // Clear previous options
-            selectElement.innerHTML = '<option value="">Search and select equipment above</option>';
-            
-            if (searchTerm.length < 2) return;
-            
-            const filtered = equipmentData.filter(eq => {
-                const sap = (eq.sap_material_no || '').toLowerCase();
-                const bfm = (eq.bfm_equipment_no || '').toLowerCase();
-                const desc = (eq.description || '').toLowerCase();
-                
-                return sap.includes(searchTerm) || 
-                       bfm.includes(searchTerm) || 
-                       desc.includes(searchTerm);
-            });
-            
-            filtered.slice(0, 20).forEach(eq => {
-                const option = document.createElement('option');
-                option.value = eq.bfm_equipment_no;
-                option.textContent = `${eq.bfm_equipment_no} - ${eq.description}`;
-                selectElement.appendChild(option);
-            });
-        }
+       function displayEquipmentData(data) {
+           const tbody = document.getElementById('equipment-tbody');
+           tbody.innerHTML = '';
+           
+           data.forEach(equipment => {
+               const row = tbody.insertRow();
+               row.innerHTML = `
+                   <td>${equipment.sap_material_no || ''}</td>
+                   <td>${equipment.bfm_equipment_no}</td>
+                   <td>${equipment.description}</td>
+                   <td>${equipment.site_location || ''}</td>
+                   <td>${equipment.last_pm_date || ''}</td>
+                   <td>${equipment.next_pm_date || ''}</td>
+                   <td>${equipment.pm_frequency || 'Not Set'}</td>
+               `;
+           });
+       }
 
-        // PM Completion
-        document.getElementById('pm-completion-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            await submitPMCompletion();
-        });
+       // Equipment Search
+       window.searchEquipment = function() {
+           const searchTerm = document.getElementById('equipment-search').value.trim().toLowerCase();
+           const selectElement = document.getElementById('selected-equipment');
+           
+           // Clear previous options
+           selectElement.innerHTML = '<option value="">Search and select equipment above</option>';
+           
+           if (searchTerm.length < 2) return;
+           
+           const filtered = equipmentData.filter(eq => {
+               const sap = (eq.sap_material_no || '').toLowerCase();
+               const bfm = (eq.bfm_equipment_no || '').toLowerCase();
+               const desc = (eq.description || '').toLowerCase();
+               
+               return sap.includes(searchTerm) || 
+                      bfm.includes(searchTerm) || 
+                      desc.includes(searchTerm);
+           });
+           
+           filtered.slice(0, 20).forEach(eq => {
+               const option = document.createElement('option');
+               option.value = eq.bfm_equipment_no;
+               option.textContent = `${eq.bfm_equipment_no} - ${eq.description}`;
+               selectElement.appendChild(option);
+           });
+       }
 
-        async function submitPMCompletion() {
-            if (!isConnected) {
-                showMessage('pm-entry', 'error', 'Cannot submit - Firebase not connected');
-                return;
-            }
-            
-            const submitBtn = document.getElementById('submit-pm-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = '📡 Submitting...';
-            
-            try {
-                const formData = {
-                    technician_name: document.getElementById('technician').value,
-                    bfm_equipment_no: document.getElementById('selected-equipment').value,
-                    hours_worked: parseFloat(document.getElementById('hours-worked').value),
-                    completion_date: document.getElementById('completion-date').value,
-                    pm_type: document.getElementById('pm-type').value,
-                    status: document.getElementById('status').value,
-                    notes: document.getElementById('notes').value,
-                    deleted: false,
-                    created_date: new Date().toISOString()
-                };
-                
-                // Calculate next PM date
-                const nextPMDate = calculateNextPMDate(formData.completion_date, formData.pm_type);
-                
-                // Add PM completion to Firebase
-                const pmRef = ref(database, 'pm_completions');
-                const newPMRef = push(pmRef);
-                await set(newPMRef, formData);
-                
-                // Update equipment last PM date and next PM date
-                const equipmentRef = ref(database, `equipment`);
-                const equipmentSnapshot = await get(equipmentRef);
-                
-                if (equipmentSnapshot.exists()) {
-                    const equipmentData = equipmentSnapshot.val();
-                    let equipmentKey = null;
-                    
-                    // Find the equipment by BFM number
-                    for (const [key, equipment] of Object.entries(equipmentData)) {
-                        if (equipment.bfm_equipment_no === formData.bfm_equipment_no) {
-                            equipmentKey = key;
-                            break;
-                        }
-                    }
-                    
-                    if (equipmentKey) {
-                        const equipmentUpdateRef = ref(database, `equipment/${equipmentKey}`);
-                        await set(equipmentUpdateRef, {
-                            ...equipmentData[equipmentKey],
-                            last_pm_date: formData.completion_date,
-                            next_pm_date: nextPMDate
-                        });
-                    }
-                }
-                
-                showMessage('pm-entry', 'success', 
-                    '✅ PM completion recorded successfully! Equipment dates updated and data synchronized.');
-                
-                // Reset form
-                document.getElementById('pm-completion-form').reset();
-                document.getElementById('completion-date').value = new Date().toISOString().split('T')[0];
-                
-                // Refresh data
-                await loadRecentCompletions();
-                await loadEquipmentData();
-                
-            } catch (error) {
-                console.error('Error submitting PM:', error);
-                showMessage('pm-entry', 'error', '❌ Failed to submit PM completion: ' + error.message);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit PM Completion';
-            }
-        }
+       // PM Completion
+       document.getElementById('pm-completion-form').addEventListener('submit', async function(e) {
+           e.preventDefault();
+           await submitPMCompletion();
+       });
 
-        // Load Recent Completions
-        window.loadRecentCompletions = async function() {
-            if (!isConnected) return;
-            
-            try {
-                showLoading('recent-pm-loading');
-                hideContainer('recent-pm-container');
-                
-                const pmRef = ref(database, 'pm_completions');
-                const pmQuery = query(pmRef, orderByChild('completion_date'), limitToLast(50));
-                const snapshot = await get(pmQuery);
-                
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    const pmArray = Object.entries(data)
-                        .map(([key, value]) => ({ id: key, ...value }))
-                        .filter(pm => !pm.deleted)
-                        .reverse(); // Show most recent first
-                    
-                    displayRecentCompletions(pmArray);
-                } else {
-                    displayRecentCompletions([]);
-                }
-                
-                showContainer('recent-pm-container');
-            } catch (error) {
-                console.error('Error loading recent completions:', error);
-            } finally {
-                hideLoading('recent-pm-loading');
-            }
-        }
+       async function submitPMCompletion() {
+           if (!isConnected) {
+               showMessage('pm-entry', 'error', 'Cannot submit - Firebase not connected');
+               return;
+           }
+           
+           const submitBtn = document.getElementById('submit-pm-btn');
+           submitBtn.disabled = true;
+           submitBtn.textContent = '📡 Submitting...';
+           
+           try {
+               const formData = {
+                   technician_name: document.getElementById('technician').value,
+                   bfm_equipment_no: document.getElementById('selected-equipment').value,
+                   hours_worked: parseFloat(document.getElementById('hours-worked').value),
+                   completion_date: document.getElementById('completion-date').value,
+                   pm_type: document.getElementById('pm-type').value,
+                   status: document.getElementById('status').value,
+                   notes: document.getElementById('notes').value,
+                   deleted: false,
+                   created_date: new Date().toISOString()
+               };
+               
+               // Calculate next PM date
+               const nextPMDate = calculateNextPMDate(formData.completion_date, formData.pm_type);
+               
+               // Add PM completion to Firebase
+               const pmRef = ref(database, 'pm_completions');
+               const newPMRef = push(pmRef);
+               await set(newPMRef, formData);
+               
+               // Update equipment last PM date and next PM date
+               const equipmentRef = ref(database, `equipment`);
+               const equipmentSnapshot = await get(equipmentRef);
+               
+               if (equipmentSnapshot.exists()) {
+                   const equipmentData = equipmentSnapshot.val();
+                   let equipmentKey = null;
+                   
+                   // Find the equipment by BFM number
+                   for (const [key, equipment] of Object.entries(equipmentData)) {
+                       if (equipment.bfm_equipment_no === formData.bfm_equipment_no) {
+                           equipmentKey = key;
+                           break;
+                       }
+                   }
+                   
+                   if (equipmentKey) {
+                       const equipmentUpdateRef = ref(database, `equipment/${equipmentKey}`);
+                       await set(equipmentUpdateRef, {
+                           ...equipmentData[equipmentKey],
+                           last_pm_date: formData.completion_date,
+                           next_pm_date: nextPMDate
+                       });
+                   }
+               }
+               
+               showMessage('pm-entry', 'success', 
+                   '✅ PM completion recorded successfully! Equipment dates updated and data synchronized.');
+               
+               // Reset form
+               document.getElementById('pm-completion-form').reset();
+               document.getElementById('completion-date').value = new Date().toISOString().split('T')[0];
+               
+               // Refresh data
+               await loadRecentCompletions();
+               await loadEquipmentData();
+               
+           } catch (error) {
+               console.error('Error submitting PM:', error);
+               showMessage('pm-entry', 'error', '❌ Failed to submit PM completion: ' + error.message);
+           } finally {
+               submitBtn.disabled = false;
+               submitBtn.textContent = 'Submit PM Completion';
+           }
+       }
 
-        function displayRecentCompletions(data) {
-            const tbody = document.getElementById('recent-pm-tbody');
-            tbody.innerHTML = '';
-            
-            data.forEach(pm => {
-                // Find equipment description
-                const equipment = equipmentData.find(eq => eq.bfm_equipment_no === pm.bfm_equipment_no);
-                const description = equipment ? equipment.description : pm.bfm_equipment_no;
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${pm.completion_date}</td>
-                    <td>${pm.technician_name}</td>
-                    <td>${description}</td>
-                    <td>${pm.hours_worked}</td>
-                    <td>${pm.pm_type}</td>
-                    <td><span class="status-badge status-${pm.status.toLowerCase().replace(' ', '-')}">${pm.status}</span></td>
-                `;
-            });
-        }
+       // Load Recent Completions
+       window.loadRecentCompletions = async function() {
+           if (!isConnected) return;
+           
+           try {
+               showLoading('recent-pm-loading');
+               hideContainer('recent-pm-container');
+               
+               const pmRef = ref(database, 'pm_completions');
+               const pmQuery = query(pmRef, orderByChild('completion_date'), limitToLast(50));
+               const snapshot = await get(pmQuery);
+               
+               if (snapshot.exists()) {
+                   const data = snapshot.val();
+                   const pmArray = Object.entries(data)
+                       .map(([key, value]) => ({ id: key, ...value }))
+                       .filter(pm => !pm.deleted)
+                       .reverse(); // Show most recent first
+                   
+                   displayRecentCompletions(pmArray);
+               } else {
+                   displayRecentCompletions([]);
+               }
+               
+               showContainer('recent-pm-container');
+           } catch (error) {
+               console.error('Error loading recent completions:', error);
+           } finally {
+               hideLoading('recent-pm-loading');
+           }
+       }
 
-        // PM Schedule Generation
-        window.generateWeeklySchedule = async function() {
-            if (!isConnected) {
-                showMessage('pm-schedule', 'error', 'Cannot generate schedule - Firebase not connected');
-                return;
-            }
-            
-            const weekStart = document.getElementById('week-start').value;
-            if (!weekStart) {
-                showMessage('pm-schedule', 'error', 'Please select a week start date');
-                return;
-            }
-            
-            try {
-                showLoading('schedule-loading');
-                
-                // Clear existing schedule for this week
-                const scheduleRef = ref(database, 'weekly_schedules');
-                const existingSnapshot = await get(scheduleRef);
-                
-                if (existingSnapshot.exists()) {
-                    const schedules = existingSnapshot.val();
-                    for (const [key, schedule] of Object.entries(schedules)) {
-                        if (schedule.week_start_date === weekStart) {
-                            await remove(ref(database, `weekly_schedules/${key}`));
-                        }
-                    }
-                }
-                
-                // Generate priority-based schedule
-                const weekStartDate = new Date(weekStart);
-                const equipmentWithPriority = equipmentData.map(eq => {
-                    const priority = calculatePriority(eq.next_pm_date, eq.pm_frequency, weekStartDate);
-                    return { ...eq, priority };
-                }).sort((a, b) => b.priority - a.priority);
-                
-                // Schedule up to 110 PMs with technician assignments
-                const targetPMs = Math.min(110, equipmentWithPriority.length);
-                let scheduledCount = 0;
-                
-                for (let i = 0; i < targetPMs; i++) {
-                    const equipment = equipmentWithPriority[i];
-                    const assignedTechnician = employees[i % employees.length];
-                    
-                    const scheduleData = {
-                        week_start_date: weekStart,
-                        bfm_equipment_no: equipment.bfm_equipment_no,
-                        pm_frequency: equipment.pm_frequency,
-                        assigned_technician: assignedTechnician,
-                        status: 'Pending',
-                        created_date: new Date().toISOString()
-                    };
-                    
-                    const newScheduleRef = push(scheduleRef);
-                    await set(newScheduleRef, scheduleData);
-                    scheduledCount++;
-                }
-                
-                showMessage('pm-schedule', 'success', 
-                    `✅ Generated ${scheduledCount} PMs for week starting ${weekStart}`);
-                await loadWeeklySchedule();
-                
-            } catch (error) {
-                console.error('Error generating schedule:', error);
-                showMessage('pm-schedule', 'error', '❌ Failed to generate schedule: ' + error.message);
-            } finally {
-                hideLoading('schedule-loading');
-            }
-        }
+       function displayRecentCompletions(data) {
+           const tbody = document.getElementById('recent-pm-tbody');
+           tbody.innerHTML = '';
+           
+           data.forEach(pm => {
+               // Find equipment description
+               const equipment = equipmentData.find(eq => eq.bfm_equipment_no === pm.bfm_equipment_no);
+               const description = equipment ? equipment.description : pm.bfm_equipment_no;
+               
+               const row = tbody.insertRow();
+               row.innerHTML = `
+                   <td>${pm.completion_date}</td>
+                   <td>${pm.technician_name}</td>
+                   <td>${description}</td>
+                   <td>${pm.hours_worked}</td>
+                   <td>${pm.pm_type}</td>
+                   <td><span class="status-badge status-${pm.status.toLowerCase().replace(' ', '-')}">${pm.status}</span></td>
+               `;
+           });
+       }
 
-        function calculatePriority(nextPMDate, frequency, weekStart) {
-            const basePriorities = {
-                'Weekly': 1000,
-                'Bi-Monthly': 800,
-                'Monthly': 600,
-                'Quarterly': 400,
-                'Six Month': 200,
-                'Annual': 100
-            };
-            
-            const basePriority = basePriorities[frequency] || 50;
-            
-            if (!nextPMDate) return basePriority + 500;
-            
-            try {
-                const nextPM = new Date(nextPMDate);
-                const daysDiff = Math.floor((nextPM - weekStart) / (24 * 60 * 60 * 1000));
-                
-                if (daysDiff <= 0) return basePriority + 1000 + Math.abs(daysDiff);
-                else if (daysDiff <= 7) return basePriority + 800;
-                else if (daysDiff <= 30) return basePriority + 500;
-                else if (daysDiff <= 90) return basePriority + 200;
-                else return basePriority;
-            } catch {
-                return basePriority + 500;
-            }
-        }
+       // PM Schedule Generation
+       window.generateWeeklySchedule = async function() {
+           if (!isConnected) {
+               showMessage('pm-schedule', 'error', 'Cannot generate schedule - Firebase not connected');
+               return;
+           }
+           
+           const weekStart = document.getElementById('week-start').value;
+           if (!weekStart) {
+               showMessage('pm-schedule', 'error', 'Please select a week start date');
+               return;
+           }
+           
+           // Make sure we have equipment data loaded
+           if (equipmentData.length === 0) {
+               await loadEquipmentData();
+           }
+           
+           try {
+               showLoading('schedule-loading');
+               
+               // Clear existing schedule for this week
+               const scheduleRef = ref(database, 'weekly_schedules');
+               const existingSnapshot = await get(scheduleRef);
+               
+               if (existingSnapshot.exists()) {
+                   const schedules = existingSnapshot.val();
+                   for (const [key, schedule] of Object.entries(schedules)) {
+                       if (schedule.week_start_date === weekStart) {
+                           await remove(ref(database, `weekly_schedules/${key}`));
+                       }
+                   }
+               }
+               
+               // Filter equipment with valid PM frequencies
+               const validEquipment = equipmentData.filter(eq => 
+                   eq.pm_frequency && 
+                   eq.pm_frequency !== 'undefined' && 
+                   eq.pm_frequency !== 'Not Set' &&
+                   pmFrequencies.hasOwnProperty(eq.pm_frequency)
+               );
+               
+               if (validEquipment.length === 0) {
+                   showMessage('pm-schedule', 'error', 
+                       'No equipment with valid PM frequencies found. Please update PM frequencies first using the "🔧 Update PM Frequencies" button.');
+                   return;
+               }
+               
+               // Generate priority-based schedule
+               const weekStartDate = new Date(weekStart);
+               const equipmentWithPriority = validEquipment.map(eq => {
+                   const priority = calculatePriority(eq.next_pm_date, eq.pm_frequency, weekStartDate);
+                   return { ...eq, priority };
+               }).sort((a, b) => b.priority - a.priority);
+               
+               // Schedule up to 110 PMs with technician assignments
+               const targetPMs = Math.min(110, equipmentWithPriority.length);
+               let scheduledCount = 0;
+               
+               for (let i = 0; i < targetPMs; i++) {
+                   const equipment = equipmentWithPriority[i];
+                   const assignedTechnician = employees[i % employees.length];
+                   
+                   const scheduleData = {
+                       week_start_date: weekStart,
+                       bfm_equipment_no: equipment.bfm_equipment_no,
+                       pm_frequency: equipment.pm_frequency,
+                       assigned_technician: assignedTechnician,
+                       status: 'Pending',
+                       created_date: new Date().toISOString()
+                   };
+                   
+                   const newScheduleRef = push(scheduleRef);
+                   await set(newScheduleRef, scheduleData);
+                   scheduledCount++;
+               }
+               
+               showMessage('pm-schedule', 'success', 
+                   `✅ Generated ${scheduledCount} PMs for week starting ${weekStart} from ${validEquipment.length} valid equipment items`);
+               await loadWeeklySchedule();
+               
+           } catch (error) {
+               console.error('Error generating schedule:', error);
+               showMessage('pm-schedule', 'error', '❌ Failed to generate schedule: ' + error.message);
+           } finally {
+               hideLoading('schedule-loading');
+           }
+       }
 
-        window.loadWeeklySchedule = async function() {
-            if (!isConnected) return;
-            
-            const weekStart = document.getElementById('week-start').value;
-            if (!weekStart) return;
-            
-            try {
-                const scheduleRef = ref(database, 'weekly_schedules');
-                const snapshot = await get(scheduleRef);
-                
-                if (snapshot.exists()) {
-                    const schedules = snapshot.val();
-                    const weekSchedules = Object.entries(schedules)
-                        .map(([key, value]) => ({ id: key, ...value }))
-                        .filter(schedule => schedule.week_start_date === weekStart);
-                    
-                    displayWeeklySchedule(weekSchedules);
-                } else {
-                    displayWeeklySchedule([]);
-                }
-            } catch (error) {
-                console.error('Error loading schedule:', error);
-            }
-        }
+       function calculatePriority(nextPMDate, frequency, weekStart) {
+           const basePriorities = {
+               'Weekly': 1000,
+               'Bi-Monthly': 800,
+               'Monthly': 600,
+               'Quarterly': 400,
+               'Six Month': 200,
+               'Annual': 100
+           };
+           
+           const basePriority = basePriorities[frequency] || 50;
+           
+           if (!nextPMDate) return basePriority + 500;
+           
+           try {
+               const nextPM = new Date(nextPMDate);
+               const daysDiff = Math.floor((nextPM - weekStart) / (24 * 60 * 60 * 1000));
+               
+               if (daysDiff <= 0) return basePriority + 1000 + Math.abs(daysDiff);
+               else if (daysDiff <= 7) return basePriority + 800;
+               else if (daysDiff <= 30) return basePriority + 500;
+               else if (daysDiff <= 90) return basePriority + 200;
+               else return basePriority;
+           } catch {
+               return basePriority + 500;
+           }
+       }
 
-        function displayWeeklySchedule(data) {
-            const tbody = document.getElementById('schedule-tbody');
-            tbody.innerHTML = '';
-            
-            data.forEach(item => {
-                // Find equipment details
-                const equipment = equipmentData.find(eq => eq.bfm_equipment_no === item.bfm_equipment_no);
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${item.bfm_equipment_no}</td>
-                    <td>${equipment ? equipment.description : ''}</td>
-                    <td>${equipment ? equipment.site_location || '' : ''}</td>
-                    <td>${item.pm_frequency}</td>
-                    <td>${item.assigned_technician || 'Unassigned'}</td>
-                    <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                `;
-            });
-        }
+       window.loadWeeklySchedule = async function() {
+           if (!isConnected) return;
+           
+           const weekStart = document.getElementById('week-start').value;
+           if (!weekStart) return;
+           
+           try {
+               const scheduleRef = ref(database, 'weekly_schedules');
+               const snapshot = await get(scheduleRef);
+               
+               if (snapshot.exists()) {
+                   const schedules = snapshot.val();
+                   const weekSchedules = Object.entries(schedules)
+                       .map(([key, value]) => ({ id: key, ...value }))
+                       .filter(schedule => schedule.week_start_date === weekStart);
+                   
+                   displayWeeklySchedule(weekSchedules);
+               } else {
+                   displayWeeklySchedule([]);
+               }
+           } catch (error) {
+               console.error('Error loading schedule:', error);
+           }
+       }
 
-        // Week Navigation
-        window.viewPreviousWeek = function() {
-            const weekInput = document.getElementById('week-start');
-            const currentDate = new Date(weekInput.value);
-            currentDate.setDate(currentDate.getDate() - 7);
-            weekInput.value = currentDate.toISOString().split('T')[0];
-            loadWeeklySchedule();
-        }
+       function displayWeeklySchedule(data) {
+           const tbody = document.getElementById('schedule-tbody');
+           tbody.innerHTML = '';
+           
+           data.forEach(item => {
+               // Find equipment details
+               const equipment = equipmentData.find(eq => eq.bfm_equipment_no === item.bfm_equipment_no);
+               
+               const row = tbody.insertRow();
+               row.innerHTML = `
+                   <td>${item.bfm_equipment_no}</td>
+                   <td>${equipment ? equipment.description : ''}</td>
+                   <td>${equipment ? equipment.site_location || '' : ''}</td>
+                   <td>${item.pm_frequency}</td>
+                   <td>${item.assigned_technician || 'Unassigned'}</td>
+                   <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
+               `;
+           });
+       }
 
-        window.viewNextWeek = function() {
-            const weekInput = document.getElementById('week-start');
-            const currentDate = new Date(weekInput.value);
-            currentDate.setDate(currentDate.getDate() + 7);
-            weekInput.value = currentDate.toISOString().split('T')[0];
-            loadWeeklySchedule();
-        }
+       // Week Navigation
+       window.viewPreviousWeek = function() {
+           const weekInput = document.getElementById('week-start');
+           const currentDate = new Date(weekInput.value);
+           currentDate.setDate(currentDate.getDate() - 7);
+           weekInput.value = currentDate.toISOString().split('T')[0];
+           loadWeeklySchedule();
+       }
 
-        // PM Management
-        window.searchPMCompletions = async function() {
-            if (!isConnected) return;
-            
-            try {
-                showLoading('pm-mgmt-loading');
-                hideContainer('pm-mgmt-container');
-                
-                const pmRef = ref(database, 'pm_completions');
-                const snapshot = await get(pmRef);
-                
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    let pmArray = Object.entries(data).map(([key, value]) => ({ id: key, ...value }));
-                    
-                    // Apply filters
-                    const fromDate = document.getElementById('mgmt-from-date').value;
-                    const toDate = document.getElementById('mgmt-to-date').value;
-                    const technician = document.getElementById('mgmt-technician').value;
-                    const equipment = document.getElementById('mgmt-equipment').value.toLowerCase();
-                    const showDeleted = document.getElementById('show-deleted').checked;
-                    
-                    pmArray = pmArray.filter(pm => {
-                        if (pm.completion_date < fromDate || pm.completion_date > toDate) return false;
-                        if (technician && pm.technician_name !== technician) return false;
-                        if (equipment && !pm.bfm_equipment_no.toLowerCase().includes(equipment)) return false;
-                        if (!showDeleted && pm.deleted) return false;
-                        return true;
-                    });
-                    
-                    pmArray.sort((a, b) => new Date(b.completion_date) - new Date(a.completion_date));
-                    displayPMCompletions(pmArray);
-                } else {
-                    displayPMCompletions([]);
-                }
-                
-                showContainer('pm-mgmt-container');
-            } catch (error) {
-                console.error('Error searching PM completions:', error);
-            } finally {
-                hideLoading('pm-mgmt-loading');
-            }
-        }
+       window.viewNextWeek = function() {
+           const weekInput = document.getElementById('week-start');
+           const currentDate = new Date(weekInput.value);
+           currentDate.setDate(currentDate.getDate() + 7);
+           weekInput.value = currentDate.toISOString().split('T')[0];
+           loadWeeklySchedule();
+       }
 
-        function displayPMCompletions(data) {
-            const tbody = document.getElementById('pm-mgmt-tbody');
-            tbody.innerHTML = '';
-            
-            data.forEach(pm => {
-                const equipment = equipmentData.find(eq => eq.bfm_equipment_no === pm.bfm_equipment_no);
-                const description = equipment ? equipment.description : 'N/A';
-                const isDeleted = pm.deleted;
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td><input type="radio" name="selected-pm" value="${pm.id}" onchange="selectPM('${pm.id}')"></td>
-                    <td>${pm.id}</td>
-                    <td>${pm.completion_date}${isDeleted ? ' (DEL)' : ''}</td>
-                    <td>${pm.technician_name}</td>
-                    <td>${pm.bfm_equipment_no}</td>
-                    <td>${description}</td>
-                    <td>${pm.hours_worked}</td>
-                    <td>${pm.pm_type}</td>
-                    <td><span class="status-badge status-${isDeleted ? 'deleted' : pm.status.toLowerCase().replace(' ', '-')}">${isDeleted ? 'DELETED' : pm.status}</span></td>
-                `;
-                
-                if (isDeleted) {
-                    row.style.opacity = '0.6';
-                }
-            });
-        }
+       // PM Management
+       window.searchPMCompletions = async function() {
+           if (!isConnected) return;
+           
+           try {
+               showLoading('pm-mgmt-loading');
+               hideContainer('pm-mgmt-container');
+               
+               const pmRef = ref(database, 'pm_completions');
+               const snapshot = await get(pmRef);
+               
+               if (snapshot.exists()) {
+                   const data = snapshot.val();
+                   let pmArray = Object.entries(data).map(([key, value]) => ({ id: key, ...value }));
+                   
+                   // Apply filters
+                   const fromDate = document.getElementById('mgmt-from-date').value;
+                   const toDate = document.getElementById('mgmt-to-date').value;
+                   const technician = document.getElementById('mgmt-technician').value;
+                   const equipment = document.getElementById('mgmt-equipment').value.toLowerCase();
+                   const showDeleted = document.getElementById('show-deleted').checked;
+                   
+                   pmArray = pmArray.filter(pm => {
+                       if (pm.completion_date < fromDate || pm.completion_date > toDate) return false;
+                       if (technician && pm.technician_name !== technician) return false;
+                       if (equipment && !pm.bfm_equipment_no.toLowerCase().includes(equipment)) return false;
+                       if (!showDeleted && pm.deleted) return false;
+                       return true;
+                   });
+                   
+                   pmArray.sort((a, b) => new Date(b.completion_date) - new Date(a.completion_date));
+                   displayPMCompletions(pmArray);
+               } else {
+                   displayPMCompletions([]);
+               }
+               
+               showContainer('pm-mgmt-container');
+           } catch (error) {
+               console.error('Error searching PM completions:', error);
+           } finally {
+               hideLoading('pm-mgmt-loading');
+           }
+       }
 
-        window.selectPM = function(pmId) {
-            selectedPMId = pmId;
-        }
+       function displayPMCompletions(data) {
+           const tbody = document.getElementById('pm-mgmt-tbody');
+           tbody.innerHTML = '';
+           
+           data.forEach(pm => {
+               const equipment = equipmentData.find(eq => eq.bfm_equipment_no === pm.bfm_equipment_no);
+               const description = equipment ? equipment.description : 'N/A';
+               const isDeleted = pm.deleted;
+               
+               const row = tbody.insertRow();
+               row.innerHTML = `
+                   <td><input type="radio" name="selected-pm" value="${pm.id}" onchange="selectPM('${pm.id}')"></td>
+                   <td>${pm.id}</td>
+                   <td>${pm.completion_date}${isDeleted ? ' (DEL)' : ''}</td>
+                   <td>${pm.technician_name}</td>
+                   <td>${pm.bfm_equipment_no}</td>
+                   <td>${description}</td>
+                   <td>${pm.hours_worked}</td>
+                   <td>${pm.pm_type}</td>
+                   <td><span class="status-badge status-${isDeleted ? 'deleted' : pm.status.toLowerCase().replace(' ', '-')}">${isDeleted ? 'DELETED' : pm.status}</span></td>
+               `;
+               
+               if (isDeleted) {
+                   row.style.opacity = '0.6';
+               }
+           });
+       }
 
-        window.deleteSelectedPM = async function() {
-            if (!selectedPMId) {
-                showMessage('pm-management', 'error', 'Please select a PM completion to delete');
-                return;
-            }
-            
-            if (!confirm('Are you sure you want to delete this PM completion? This will update equipment dates automatically.')) {
-                return;
-            }
-            
-            try {
-                // Mark PM as deleted
-                const pmRef = ref(database, `pm_completions/${selectedPMId}`);
-                const pmSnapshot = await get(pmRef);
-                
-                if (pmSnapshot.exists()) {
-                    const pmData = pmSnapshot.val();
-                    await set(pmRef, {
-                        ...pmData,
-                        deleted: true,
-                        deleted_date: new Date().toISOString(),
-                        deleted_by: 'Web User'
-                    });
-                    
-                    // Recalculate equipment dates
-                    await recalculateEquipmentDates(pmData.bfm_equipment_no);
-                    
-                    showMessage('pm-management', 'success', '✅ PM completion deleted successfully. Equipment dates updated.');
-                    selectedPMId = null;
-                    await searchPMCompletions();
-                    await loadEquipmentData();
-                }
-            } catch (error) {
-                console.error('Error deleting PM:', error);
-                showMessage('pm-management', 'error', '❌ Failed to delete PM completion: ' + error.message);
-            }
-        }
+       window.selectPM = function(pmId) {
+           selectedPMId = pmId;
+       }
 
-        window.restoreDeletedPM = async function() {
-            if (!selectedPMId) {
-                showMessage('pm-management', 'error', 'Please select a deleted PM completion to restore');
-                return;
-            }
-            
-            try {
-                // Restore PM
-                const pmRef = ref(database, `pm_completions/${selectedPMId}`);
-                const pmSnapshot = await get(pmRef);
-                
-                if (pmSnapshot.exists()) {
-                    const pmData = pmSnapshot.val();
-                    await set(pmRef, {
-                        ...pmData,
-                        deleted: false,
-                        deleted_date: null,
-                        deleted_by: null
-                    });
-                    
-                    // Recalculate equipment dates
-                    await recalculateEquipmentDates(pmData.bfm_equipment_no);
-                    
-                    showMessage('pm-management', 'success', '✅ PM completion restored successfully. Equipment dates updated.');
-                    selectedPMId = null;
-                    await searchPMCompletions();
-                    await loadEquipmentData();
-                }
-            } catch (error) {
-                console.error('Error restoring PM:', error);
-                showMessage('pm-management', 'error', '❌ Failed to restore PM completion: ' + error.message);
-            }
-        }
+       window.deleteSelectedPM = async function() {
+           if (!selectedPMId) {
+               showMessage('pm-management', 'error', 'Please select a PM completion to delete');
+               return;
+           }
+           
+           if (!confirm('Are you sure you want to delete this PM completion? This will update equipment dates automatically.')) {
+               return;
+           }
+           
+           try {
+               // Mark PM as deleted
+               const pmRef = ref(database, `pm_completions/${selectedPMId}`);
+               const pmSnapshot = await get(pmRef);
+               
+               if (pmSnapshot.exists()) {
+                   const pmData = pmSnapshot.val();
+                   await set(pmRef, {
+                       ...pmData,
+                       deleted: true,
+                       deleted_date: new Date().toISOString(),
+                       deleted_by: 'Web User'
+                   });
+                   
+                   // Recalculate equipment dates
+                   await recalculateEquipmentDates(pmData.bfm_equipment_no);
+                   
+                   showMessage('pm-management', 'success', '✅ PM completion deleted successfully. Equipment dates updated.');
+                   selectedPMId = null;
+                   await searchPMCompletions();
+                   await loadEquipmentData();
+               }
+           } catch (error) {
+               console.error('Error deleting PM:', error);
+               showMessage('pm-management', 'error', '❌ Failed to delete PM completion: ' + error.message);
+           }
+       }
 
-        async function recalculateEquipmentDates(bfmEquipmentNo) {
-            try {
-                // Find most recent non-deleted PM for this equipment
-                const pmRef = ref(database, 'pm_completions');
-                const snapshot = await get(pmRef);
-                
-                let lastPMDate = '';
-                let nextPMDate = '';
-                
-                if (snapshot.exists()) {
-                    const pms = Object.values(snapshot.val())
-                        .filter(pm => pm.bfm_equipment_no === bfmEquipmentNo && !pm.deleted)
-                        .sort((a, b) => new Date(b.completion_date) - new Date(a.completion_date));
-                    
-                    if (pms.length > 0) {
-                        const mostRecentPM = pms[0];
-                        lastPMDate = mostRecentPM.completion_date;
-                        nextPMDate = calculateNextPMDate(mostRecentPM.completion_date, mostRecentPM.pm_type);
-                    }
-                }
-                
-                // Update equipment
-                const equipmentRef = ref(database, 'equipment');
-                const equipmentSnapshot = await get(equipmentRef);
-                
-                if (equipmentSnapshot.exists()) {
-                    const equipmentData = equipmentSnapshot.val();
-                    for (const [key, equipment] of Object.entries(equipmentData)) {
-                        if (equipment.bfm_equipment_no === bfmEquipmentNo) {
-                            await set(ref(database, `equipment/${key}`), {
-                                ...equipment,
-                                last_pm_date: lastPMDate,
-                                next_pm_date: nextPMDate
-                            });
-                            break;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error recalculating equipment dates:', error);
-            }
-        }
+       window.restoreDeletedPM = async function() {
+           if (!selectedPMId) {
+               showMessage('pm-management', 'error', 'Please select a deleted PM completion to restore');
+               return;
+           }
+           
+           try {
+               // Restore PM
+               const pmRef = ref(database, `pm_completions/${selectedPMId}`);
+               const pmSnapshot = await get(pmRef);
+               
+               if (pmSnapshot.exists()) {
+                   const pmData = pmSnapshot.val();
+                   await set(pmRef, {
+                       ...pmData,
+                       deleted: false,
+                       deleted_date: null,
+                       deleted_by: null
+                   });
+                   
+                   // Recalculate equipment dates
+                   await recalculateEquipmentDates(pmData.bfm_equipment_no);
+                   
+                   showMessage('pm-management', 'success', '✅ PM completion restored successfully. Equipment dates updated.');
+                   selectedPMId = null;
+                   await searchPMCompletions();
+                   await loadEquipmentData();
+               }
+           } catch (error) {
+               console.error('Error restoring PM:', error);
+               showMessage('pm-management', 'error', '❌ Failed to restore PM completion: ' + error.message);
+           }
+       }
 
-        window.refreshPMManagement = function() {
-            searchPMCompletions();
-        }
+       async function recalculateEquipmentDates(bfmEquipmentNo) {
+           try {
+               // Find most recent non-deleted PM for this equipment
+               const pmRef = ref(database, 'pm_completions');
+               const snapshot = await get(pmRef);
+               
+               let lastPMDate = '';
+               let nextPMDate = '';
+               
+               if (snapshot.exists()) {
+                   const pms = Object.values(snapshot.val())
+                       .filter(pm => pm.bfm_equipment_no === bfmEquipmentNo && !pm.deleted)
+                       .sort((a, b) => new Date(b.completion_date) - new Date(a.completion_date));
+                   
+                   if (pms.length > 0) {
+                       const mostRecentPM = pms[0];
+                       lastPMDate = mostRecentPM.completion_date;
+                       nextPMDate = calculateNextPMDate(mostRecentPM.completion_date, mostRecentPM.pm_type);
+                   }
+               }
+               
+               // Update equipment
+               const equipmentRef = ref(database, 'equipment');
+               const equipmentSnapshot = await get(equipmentRef);
+               
+               if (equipmentSnapshot.exists()) {
+                   const equipmentData = equipmentSnapshot.val();
+                   for (const [key, equipment] of Object.entries(equipmentData)) {
+                       if (equipment.bfm_equipment_no === bfmEquipmentNo) {
+                           await set(ref(database, `equipment/${key}`), {
+                               ...equipment,
+                               last_pm_date: lastPMDate,
+                               next_pm_date: nextPMDate
+                           });
+                           break;
+                       }
+                   }
+               }
+           } catch (error) {
+               console.error('Error recalculating equipment dates:', error);
+           }
+       }
 
-        // Equipment Search
-        window.performSearch = function() {
-            const criteria = document.getElementById('search-criteria').value;
-            const term = document.getElementById('search-term').value.trim().toLowerCase();
-            const tbody = document.getElementById('search-results-tbody');
-            
-            tbody.innerHTML = '';
-            
-            if (!term && criteria !== 'All') return;
-            
-            const filtered = equipmentData.filter(eq => {
-                if (criteria === 'All' || !term) return true;
-                
-                const sap = (eq.sap_material_no || '').toLowerCase();
-                const bfm = (eq.bfm_equipment_no || '').toLowerCase();
-                const desc = (eq.description || '').toLowerCase();
-                const loc = (eq.site_location || '').toLowerCase();
-                
-                switch(criteria) {
-                    case 'SAP Material No.':
-                        return sap.includes(term);
-                    case 'BFM Equipment No.':
-                        return bfm.includes(term);
-                    case 'Description':
-                        return desc.includes(term);
-                    case 'Location':
-                        return loc.includes(term);
-                    default:
-                        return false;
-                }
-            });
-            
-            filtered.forEach(eq => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${eq.sap_material_no || ''}</td>
-                    <td>${eq.bfm_equipment_no}</td>
-                    <td>${eq.description}</td>
-                    <td>${eq.site_location || ''}</td>
-                    <td>${eq.last_pm_date || ''}</td>
-                    <td>${eq.next_pm_date || ''}</td>
-                `;
-            });
-        }
+       window.refreshPMManagement = function() {
+           searchPMCompletions();
+       }
 
-        // Add New Equipment
-        document.getElementById('new-equipment-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            await addNewEquipment();
-        });
+       // Equipment Search
+       window.performSearch = function() {
+           const criteria = document.getElementById('search-criteria').value;
+           const term = document.getElementById('search-term').value.trim().toLowerCase();
+           const tbody = document.getElementById('search-results-tbody');
+           
+           tbody.innerHTML = '';
+           
+           if (!term && criteria !== 'All') return;
+           
+           const filtered = equipmentData.filter(eq => {
+               if (criteria === 'All' || !term) return true;
+               
+               const sap = (eq.sap_material_no || '').toLowerCase();
+               const bfm = (eq.bfm_equipment_no || '').toLowerCase();
+               const desc = (eq.description || '').toLowerCase();
+               const loc = (eq.site_location || '').toLowerCase();
+               
+               switch(criteria) {
+                   case 'SAP Material No.':
+                       return sap.includes(term);
+                   case 'BFM Equipment No.':
+                       return bfm.includes(term);
+                   case 'Description':
+                       return desc.includes(term);
+                   case 'Location':
+                       return loc.includes(term);
+                   default:
+                       return false;
+               }
+           });
+           
+           filtered.forEach(eq => {
+               const row = tbody.insertRow();
+               row.innerHTML = `
+                   <td>${eq.sap_material_no || ''}</td>
+                   <td>${eq.bfm_equipment_no}</td>
+                   <td>${eq.description}</td>
+                   <td>${eq.site_location || ''}</td>
+                   <td>${eq.last_pm_date || ''}</td>
+                   <td>${eq.next_pm_date || ''}</td>
+               `;
+           });
+       }
 
-        async function addNewEquipment() {
-            if (!isConnected) {
-                showMessage('add-equipment', 'error', 'Cannot add equipment - Firebase not connected');
-                return;
-            }
-            
-            try {
-                const formData = {
-                    sap_material_no: document.getElementById('new-sap').value,
-                    bfm_equipment_no: document.getElementById('new-bfm').value,
-                    description: document.getElementById('new-description').value,
-                    site_location: document.getElementById('new-location').value,
-                    pm_frequency: document.getElementById('new-frequency').value,
-                    last_pm_date: '',
-                    next_pm_date: calculateNextPMDate(new Date().toISOString().split('T')[0], document.getElementById('new-frequency').value),
-                    created_date: new Date().toISOString()
-                };
-                
-                const equipmentRef = ref(database, 'equipment');
-                const newEquipmentRef = push(equipmentRef);
-                await set(newEquipmentRef, formData);
-                
-                showMessage('add-equipment', 'success', '✅ Equipment added successfully!');
-                
-                // Reset form
-                document.getElementById('new-equipment-form').reset();
-                
-                // Refresh data
-                await loadEquipmentData();
-                await loadRecentEquipment();
-                
-            } catch (error) {
-                console.error('Error adding equipment:', error);
-                showMessage('add-equipment', 'error', '❌ Failed to add equipment: ' + error.message);
-            }
-        }
+       // Add New Equipment
+       document.getElementById('new-equipment-form').addEventListener('submit', async function(e) {
+           e.preventDefault();
+           await addNewEquipment();
+       });
 
-        window.loadRecentEquipment = async function() {
-            if (!isConnected) return;
-            
-            try {
-                showLoading('recent-equipment-loading');
-                hideContainer('recent-equipment-container');
-                
-                const equipmentRef = ref(database, 'equipment');
-                const snapshot = await get(equipmentRef);
-                
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    const recentEquipment = Object.entries(data)
-                        .map(([key, value]) => ({ id: key, ...value }))
-                        .filter(eq => {
-                            const createdDate = new Date(eq.created_date || 0);
-                            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-                            return createdDate > thirtyDaysAgo;
-                        })
-                        .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
-                        .slice(0, 20);
-                    
-                    displayRecentEquipment(recentEquipment);
-                } else {
-                    displayRecentEquipment([]);
-                }
-                
-                showContainer('recent-equipment-container');
-            } catch (error) {
-                console.error('Error loading recent equipment:', error);
-            } finally {
-                hideLoading('recent-equipment-loading');
-            }
-        }
+       async function addNewEquipment() {
+           if (!isConnected) {
+               showMessage('add-equipment', 'error', 'Cannot add equipment - Firebase not connected');
+               return;
+           }
+           
+           try {
+               const formData = {
+                   sap_material_no: document.getElementById('new-sap').value,
+                   bfm_equipment_no: document.getElementById('new-bfm').value,
+                   description: document.getElementById('new-description').value,
+                   site_location: document.getElementById('new-location').value,
+                   pm_frequency: document.getElementById('new-frequency').value,
+                   last_pm_date: '',
+                   next_pm_date: calculateNextPMDate(new Date().toISOString().split('T')[0], document.getElementById('new-frequency').value),
+                   created_date: new Date().toISOString()
+               };
+               
+               const equipmentRef = ref(database, 'equipment');
+               const newEquipmentRef = push(equipmentRef);
+               await set(newEquipmentRef, formData);
+               
+               showMessage('add-equipment', 'success', '✅ Equipment added successfully!');
+               
+               // Reset form
+               document.getElementById('new-equipment-form').reset();
+               
+               // Refresh data
+               await loadEquipmentData();
+               await loadRecentEquipment();
+               
+           } catch (error) {
+               console.error('Error adding equipment:', error);
+               showMessage('add-equipment', 'error', '❌ Failed to add equipment: ' + error.message);
+           }
+       }
 
-        function displayRecentEquipment(data) {
-            const tbody = document.getElementById('recent-equipment-tbody');
-            tbody.innerHTML = '';
-            
-            data.forEach(eq => {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${eq.sap_material_no || ''}</td>
-                    <td>${eq.bfm_equipment_no}</td>
-                    <td>${eq.description}</td>
-                    <td>${eq.site_location || ''}</td>
-                    <td>${eq.pm_frequency}</td>
-                    <td>${eq.created_date ? new Date(eq.created_date).toLocaleDateString() : ''}</td>
-                `;
-            });
-        }
+       window.loadRecentEquipment = async function() {
+           if (!isConnected) return;
+           
+           try {
+               showLoading('recent-equipment-loading');
+               hideContainer('recent-equipment-container');
+               
+               const equipmentRef = ref(database, 'equipment');
+               const snapshot = await get(equipmentRef);
+               
+               if (snapshot.exists()) {
+                   const data = snapshot.val();
+                   const recentEquipment = Object.entries(data)
+                       .map(([key, value]) => ({ id: key, ...value }))
+                       .filter(eq => {
+                           const createdDate = new Date(eq.created_date || 0);
+                           const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                           return createdDate > thirtyDaysAgo;
+                       })
+                       .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+                       .slice(0, 20);
+                   
+                   displayRecentEquipment(recentEquipment);
+               } else {
+                   displayRecentEquipment([]);
+               }
+               
+               showContainer('recent-equipment-container');
+           } catch (error) {
+               console.error('Error loading recent equipment:', error);
+           } finally {
+               hideLoading('recent-equipment-loading');
+           }
+       }
 
-        // CSV Export/Import Functions
-        window.exportEquipmentCSV = async function() {
-            if (!isConnected) {
-                showMessage('equipment-list', 'error', 'Cannot export CSV - Firebase not connected');
-                return;
-            }
-            
-            try {
-                await loadEquipmentData(); // Ensure we have latest data
-                
-                // Convert to CSV format
-                const csvData = equipmentData.map(eq => ({
-                    '(SAP) Material No.': eq.sap_material_no || '',
-                    '(BFM) Equipment No.': eq.bfm_equipment_no,
-                    'Description': eq.description,
-                    'Site Location': eq.site_location || '',
-                    'Last PM Completion Date': eq.last_pm_date || '',
-                    'Next PM Completion Date': eq.next_pm_date || '',
-                    'PM Frequency': eq.pm_frequency
-                }));
-                
-                // Convert to CSV string
-                const headers = Object.keys(csvData[0] || {});
-                const csvContent = [
-                    headers.join(','),
-                    ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-                ].join('\n');
-                
-                // Download file
-                const blob = new Blob([csvContent], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `SAP_AIT_AssetList_Updated_${new Date().toISOString().split('T')[0]}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                showMessage('equipment-list', 'success', '✅ Updated equipment CSV exported successfully!');
-            } catch (error) {
-                console.error('Error exporting CSV:', error);
-                showMessage('equipment-list', 'error', '❌ Failed to export CSV: ' + error.message);
-            }
-        }
+       function displayRecentEquipment(data) {
+           const tbody = document.getElementById('recent-equipment-tbody');
+           tbody.innerHTML = '';
+           
+           data.forEach(eq => {
+               const row = tbody.insertRow();
+               row.innerHTML = `
+                   <td>${eq.sap_material_no || ''}</td>
+                   <td>${eq.bfm_equipment_no}</td>
+                   <td>${eq.description}</td>
+                   <td>${eq.site_location || ''}</td>
+                   <td>${eq.pm_frequency}</td>
+                   <td>${eq.created_date ? new Date(eq.created_date).toLocaleDateString() : ''}</td>
+               `;
+           });
+       }
 
-        window.importEquipmentCSV = function() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.csv';
-            input.onchange = async function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                try {
-                    const text = await file.text();
-                    const lines = text.split('\n');
-                    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-                    
-                    // Clear existing equipment
-                    const equipmentRef = ref(database, 'equipment');
-                    await set(equipmentRef, {});
-                    
-                    let importCount = 0;
-                    
-                    // Import new equipment
-                    for (let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
-                        
-                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-                        const equipmentData = {};
-                        
-                        headers.forEach((header, index) => {
-                            switch(header) {
-                                case '(SAP) Material No.':
-                                case '(SAP) Material No. ':
-                                    equipmentData.sap_material_no = values[index] || '';
-                                    break;
-                                case '(BFM) Equipment No.':
-                                    equipmentData.bfm_equipment_no = values[index] || '';
-                                    break;
-                                case 'Description':
-                                    equipmentData.description = values[index] || '';
-                                    break;
-                                case 'Site Location':
-                                    equipmentData.site_location = values[index] || '';
-                                    break;
-                                case 'Last PM Completion Date':
-                                    equipmentData.last_pm_date = values[index] || '';
-                                    break;
-                                case 'Next PM Completion Date':
-                                    equipmentData.next_pm_date = values[index] || '';
-                                    break;
-                                case 'PM Frequency':
-                                    equipmentData.pm_frequency = values[index] || 'Monthly';
-                                    break;
-                            }
-                        });
-                        
-                        if (equipmentData.bfm_equipment_no && equipmentData.description) {
-                            equipmentData.created_date = new Date().toISOString();
-                            
-                            const newEquipmentRef = push(equipmentRef);
-                            await set(newEquipmentRef, equipmentData);
-                            importCount++;
-                        }
-                    }
-                    
-                    showMessage('equipment-list', 'success', `✅ Imported ${importCount} equipment records successfully!`);
-                    await loadEquipmentData();
-                    
-                } catch (error) {
-                    console.error('Error importing CSV:', error);
-                    showMessage('equipment-list', 'error', '❌ Failed to import CSV: ' + error.message);
-                }
-            };
-            input.click();
-        }
+       // CSV Export/Import Functions
+       window.exportEquipmentCSV = async function() {
+           if (!isConnected) {
+               showMessage('equipment-list', 'error', 'Cannot export CSV - Firebase not connected');
+               return;
+           }
+           
+           try {
+               await loadEquipmentData(); // Ensure we have latest data
+               
+               // Convert to CSV format
+               const csvData = equipmentData.map(eq => ({
+                   '(SAP) Material No.': eq.sap_material_no || '',
+                   '(BFM) Equipment No.': eq.bfm_equipment_no,
+                   'Description': eq.description,
+                   'Site Location': eq.site_location || '',
+                   'Last PM Completion Date': eq.last_pm_date || '',
+                   'Next PM Completion Date': eq.next_pm_date || '',
+                   'PM Frequency': eq.pm_frequency
+               }));
+               
+               // Convert to CSV string
+               const headers = Object.keys(csvData[0] || {});
+               const csvContent = [
+                   headers.join(','),
+                   ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+               ].join('\n');
+               
+               // Download file
+               const blob = new Blob([csvContent], { type: 'text/csv' });
+               const url = window.URL.createObjectURL(blob);
+               const a = document.createElement('a');
+               a.href = url;
+               a.download = `SAP_AIT_AssetList_Updated_${new Date().toISOString().split('T')[0]}.csv`;
+               document.body.appendChild(a);
+               a.click();
+               window.URL.revokeObjectURL(url);
+               document.body.removeChild(a);
+               
+               showMessage('equipment-list', 'success', '✅ Updated equipment CSV exported successfully!');
+           } catch (error) {
+               console.error('Error exporting CSV:', error);
+               showMessage('equipment-list', 'error', '❌ Failed to export CSV: ' + error.message);
+           }
+       }
 
-        // Reports
-        window.generateReport = async function() {
-            if (!isConnected) {
-                showMessage('reports', 'error', 'Cannot generate report - Firebase not connected');
-                return;
-            }
-            
-            try {
-                const reportType = document.getElementById('report-type').value;
-                const reportDate = new Date(document.getElementById('report-date').value);
-                
-                // Calculate date ranges
-                let startDate, endDate, periodTitle, plannedPMs;
-                
-                if (reportType === 'Weekly') {
-                    const dayOfWeek = reportDate.getDay();
-                    startDate = new Date(reportDate);
-                    startDate.setDate(reportDate.getDate() - dayOfWeek);
-                    endDate = new Date(startDate);
-                    endDate.setDate(startDate.getDate() + 6);
-                    
-                    const weekNumber = getWeekNumber(startDate);
-                    periodTitle = `THIS WEEK ${weekNumber}`;
-                    plannedPMs = 110;
-                } else if (reportType === 'Monthly') {
-                    startDate = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
-                    endDate = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
-                    
-                    periodTitle = `THIS MONTH ${reportDate.getMonth() + 1}`;
-                    plannedPMs = 476;
-                } else {
-                    startDate = new Date(reportDate.getFullYear(), 0, 1);
-                    endDate = new Date(reportDate);
-                    
-                    periodTitle = `YEAR to DATE ${reportDate.getFullYear()}`;
-                    const daysElapsed = Math.floor((reportDate - startDate) / (24 * 60 * 60 * 1000)) + 1;
-                    const weeksElapsed = daysElapsed / 7;
-                    plannedPMs = Math.floor(weeksElapsed * 110);
-                }
-                
-                const startDateStr = startDate.toISOString().split('T')[0];
-                const endDateStr = endDate.toISOString().split('T')[0];
-                
-                // Get PM data
-                const pmRef = ref(database, 'pm_completions');
-                const snapshot = await get(pmRef);
-                
-                let totalPMs = 0;
-                let totalHours = 0;
-                const pmByFrequency = {
-                    'Weekly': 0, 'Bi-Monthly': 0, 'Monthly': 0,
-                    'Quarterly': 0, 'Six Month': 0, 'Annual': 0
-                };
-                const employeeCounts = {};
-                employees.forEach(emp => employeeCounts[emp] = 0);
-                
-                if (snapshot.exists()) {
-                    const pms = Object.values(snapshot.val())
-                        .filter(pm => !pm.deleted && 
-                                     pm.completion_date >= startDateStr && 
-                                     pm.completion_date <= endDateStr);
-                    
-                    totalPMs = pms.length;
-                    totalHours = pms.reduce((sum, pm) => sum + (pm.hours_worked || 0), 0);
-                    
-                    pms.forEach(pm => {
-                        if (pmByFrequency.hasOwnProperty(pm.pm_type)) {
-                            pmByFrequency[pm.pm_type]++;
-                        }
-                        if (employeeCounts.hasOwnProperty(pm.technician_name)) {
-                            employeeCounts[pm.technician_name]++;
-                        }
-                    });
-                }
-                
-                const completionRate = plannedPMs > 0 ? Math.floor((totalPMs / plannedPMs) * 100) : 0;
-                
-                // Generate report content
-                const report = generateReportContent(
-                    periodTitle, totalPMs, plannedPMs, completionRate,
-                    totalHours, pmByFrequency, employeeCounts
-                );
-                
-                document.getElementById('report-content').textContent = report;
-                
-            } catch (error) {
-                console.error('Error generating report:', error);
-                showMessage('reports', 'error', '❌ Failed to generate report: ' + error.message);
-            }
-        }
+       window.importEquipmentCSV = function() {
+           const input = document.createElement('input');
+           input.type = 'file';
+           input.accept = '.csv';
+           input.onchange = async function(e) {
+               const file = e.target.files[0];
+               if (!file) return;
+               
+               try {
+                   const text = await file.text();
+                   const lines = text.split('\n');
+                   const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                   
+                   // Clear existing equipment
+                   const equipmentRef = ref(database, 'equipment');
+                   await set(equipmentRef, {});
+                   
+                   let importCount = 0;
+                   
+                   // Import new equipment
+                   for (let i = 1; i < lines.length; i++) {
+                       const line = lines[i].trim();
+                       if (!line) continue;
+                       
+                       const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                       const equipmentData = {};
+                       
+                       headers.forEach((header, index) => {
+                           switch(header) {
+                               case '(SAP) Material No.':
+                               case '(SAP) Material No. ':
+                                   equipmentData.sap_material_no = values[index] || '';
+                                   break;
+                               case '(BFM) Equipment No.':
+                                   equipmentData.bfm_equipment_no = values[index] || '';
+                                   break;
+                               case 'Description':
+                                   equipmentData.description = values[index] || '';
+                                   break;
+                               case 'Site Location':
+                                   equipmentData.site_location = values[index] || '';
+                                   break;
+                               case 'Last PM Completion Date':
+                                   equipmentData.last_pm_date = values[index] || '';
+                                   break;
+                               case 'Next PM Completion Date':
+                                   equipmentData.next_pm_date = values[index] || '';
+                                   break;
+                               case 'PM Frequency':
+                                   equipmentData.pm_frequency = values[index] || 'Monthly';
+                                   break;
+                           }
+                       });
+                       
+                       if (equipmentData.bfm_equipment_no && equipmentData.description) {
+                           equipmentData.created_date = new Date().toISOString();
+                           
+                           const newEquipmentRef = push(equipmentRef);
+                           await set(newEquipmentRef, equipmentData);
+                           importCount++;
+                       }
+                   }
+                   
+                   showMessage('equipment-list', 'success', `✅ Imported ${importCount} equipment records successfully!`);
+                   await loadEquipmentData();
+                   
+               } catch (error) {
+                   console.error('Error importing CSV:', error);
+                   showMessage('equipment-list', 'error', '❌ Failed to import CSV: ' + error.message);
+               }
+           };
+           input.click();
+       }
 
-        function getWeekNumber(date) {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-        }
+       // Reports
+       window.generateReport = async function() {
+           if (!isConnected) {
+               showMessage('reports', 'error', 'Cannot generate report - Firebase not connected');
+               return;
+           }
+           
+           try {
+               const reportType = document.getElementById('report-type').value;
+               const reportDate = new Date(document.getElementById('report-date').value);
+               
+               // Calculate date ranges
+               let startDate, endDate, periodTitle, plannedPMs;
+               
+               if (reportType === 'Weekly') {
+                   const dayOfWeek = reportDate.getDay();
+                   startDate = new Date(reportDate);
+                   startDate.setDate(reportDate.getDate() - dayOfWeek);
+                   endDate = new Date(startDate);
+                   endDate.setDate(startDate.getDate() + 6);
+                   
+                   const weekNumber = getWeekNumber(startDate);
+                   periodTitle = `THIS WEEK ${weekNumber}`;
+                   plannedPMs = 110;
+               } else if (reportType === 'Monthly') {
+                   startDate = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
+                   endDate = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
+                   
+                   periodTitle = `THIS MONTH ${reportDate.getMonth() + 1}`;
+                   plannedPMs = 476;
+               } else {
+                   startDate = new Date(reportDate.getFullYear(), 0, 1);
+                   endDate = new Date(reportDate);
+                   
+                   periodTitle = `YEAR to DATE ${reportDate.getFullYear()}`;
+                   const daysElapsed = Math.floor((reportDate - startDate) / (24 * 60 * 60 * 1000)) + 1;
+                   const weeksElapsed = daysElapsed / 7;
+                   plannedPMs = Math.floor(weeksElapsed * 110);
+               }
+               
+               const startDateStr = startDate.toISOString().split('T')[0];
+               const endDateStr = endDate.toISOString().split('T')[0];
+               
+               // Get PM data
+               const pmRef = ref(database, 'pm_completions');
+               const snapshot = await get(pmRef);
+               
+               let totalPMs = 0;
+               let totalHours = 0;
+               const pmByFrequency = {
+                   'Weekly': 0, 'Bi-Monthly': 0, 'Monthly': 0,
+                   'Quarterly': 0, 'Six Month': 0, 'Annual': 0
+               };
+               const employeeCounts = {};
+               employees.forEach(emp => employeeCounts[emp] = 0);
+               
+               if (snapshot.exists()) {
+                   const pms = Object.values(snapshot.val())
+                       .filter(pm => !pm.deleted && 
+                                    pm.completion_date >= startDateStr && 
+                                    pm.completion_date <= endDateStr);
+                   
+                   totalPMs = pms.length;
+                   totalHours = pms.reduce((sum, pm) => sum + (pm.hours_worked || 0), 0);
+                   
+                   pms.forEach(pm => {
+                       if (pmByFrequency.hasOwnProperty(pm.pm_type)) {
+                           pmByFrequency[pm.pm_type]++;
+                       }
+                       if (employeeCounts.hasOwnProperty(pm.technician_name)) {
+                           employeeCounts[pm.technician_name]++;
+                       }
+                   });
+               }
+               
+               const completionRate = plannedPMs > 0 ? Math.floor((totalPMs / plannedPMs) * 100) : 0;
+               
+               // Generate report content
+               const report = generateReportContent(
+                   periodTitle, totalPMs, plannedPMs, completionRate,
+                   totalHours, pmByFrequency, employeeCounts
+               );
+               
+               document.getElementById('report-content').textContent = report;
+               
+           } catch (error) {
+               console.error('Error generating report:', error);
+               showMessage('reports', 'error', '❌ Failed to generate report: ' + error.message);
+           }
+       }
 
-        function generateReportContent(periodTitle, totalPMs, plannedPMs, completionRate, totalHours, pmByFrequency, employeeCounts) {
-            let report = "AIRBUS                PERFORMANCE REPORT                AIT\n";
-            report += "=".repeat(80) + "\n\n";
-            
-            report += `${periodTitle}\n`;
-            report += `Total Number of PMs Performed:      ${totalPMs.toString().padStart(3)}\n\n`;
-            
-            if (periodTitle.includes("WEEK")) {
-                report += `Planned Weekly PMs:                  ${plannedPMs.toString().padStart(3)}\n`;
-            } else if (periodTitle.includes("MONTH")) {
-                report += `Planned Monthly PMs:                 ${plannedPMs.toString().padStart(3)}\n`;
-            } else {
-                report += `Planned Yearly PMs:                  ${plannedPMs.toString().padStart(4)}\n`;
-            }
-            
-            report += `\nNumber of PM Hours Worked:           ${totalHours.toFixed(2).padStart(6)}\n\n`;
-            
-            // PM breakdown by frequency
-            report += `Annual PMs:        ${pmByFrequency['Annual'].toString().padStart(3)}      `;
-            report += `CMs Opened         Number of PMs Turned to CMs:    0\n`;
-            report += `Six Month PMs:     ${pmByFrequency['Six Month'].toString().padStart(3)}      `;
-            report += `0                  Number of CMs (Andon Board):    0\n`;
-            report += `Quarterly PMs:     ${pmByFrequency['Quarterly'].toString().padStart(3)}\n`;
-            report += `Monthly PMs:       ${pmByFrequency['Monthly'].toString().padStart(3)}      `;
-            report += `CMs Closed         Number of CM Hours Worked:     0.00\n`;
-            report += `Bi-Monthly PMs:    ${pmByFrequency['Bi-Monthly'].toString().padStart(3)}      `;
-            report += `0\n`;
-            report += `Weekly PMs:        ${pmByFrequency['Weekly'].toString().padStart(3)}\n\n`;
-            
-            // Completion rate
-            const completionColor = completionRate >= 90 ? "GREEN" : completionRate >= 70 ? "YELLOW" : "RED";
-            report += `                   ${completionRate}%\n`;
-            report += `               [${completionColor}]\n\n`;
-            
-            // Employee section
-            report += "PMs Completed Per Employee:\n";
-            report += "-".repeat(30) + "\n";
-            
-            employees.forEach(employee => {
-                const count = employeeCounts[employee] || 0;
-                report += `${employee}:`.padEnd(20) + count.toString().padStart(3) + "\n";
-            });
-            
-            return report;
-        }
+       function getWeekNumber(date) {
+           const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+           const dayNum = d.getUTCDay() || 7;
+           d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+           const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+           return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+       }
 
-        window.printReport = function() {
-            const reportContent = document.getElementById('report-content').textContent;
-            if (!reportContent || reportContent.includes('No report generated yet')) {
-                showMessage('reports', 'error', 'No report to print. Generate a report first.');
-                return;
-            }
-            
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <title>AIT Performance Report</title>
-                    <style>
-                        body { font-family: 'Courier New', monospace; margin: 20px; }
-                        pre { white-space: pre-wrap; }
-                    </style>
-                </head>
-                <body>
-                    <pre>${reportContent}</pre>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
-        }
+       function generateReportContent(periodTitle, totalPMs, plannedPMs, completionRate, totalHours, pmByFrequency, employeeCounts) {
+           let report = "AIRBUS                PERFORMANCE REPORT                AIT\n";
+           report += "=".repeat(80) + "\n\n";
+           
+           report += `${periodTitle}\n`;
+           report += `Total Number of PMs Performed:      ${totalPMs.toString().padStart(3)}\n\n`;
+           
+           if (periodTitle.includes("WEEK")) {
+               report += `Planned Weekly PMs:                  ${plannedPMs.toString().padStart(3)}\n`;
+           } else if (periodTitle.includes("MONTH")) {
+               report += `Planned Monthly PMs:                 ${plannedPMs.toString().padStart(3)}\n`;
+           } else {
+               report += `Planned Yearly PMs:                  ${plannedPMs.toString().padStart(4)}\n`;
+           }
+           
+           report += `\nNumber of PM Hours Worked:           ${totalHours.toFixed(2).padStart(6)}\n\n`;
+           
+           // PM breakdown by frequency
+           report += `Annual PMs:        ${pmByFrequency['Annual'].toString().padStart(3)}      `;
+           report += `CMs Opened         Number of PMs Turned to CMs:    0\n`;
+           report += `Six Month PMs:     ${pmByFrequency['Six Month'].toString().padStart(3)}      `;
+           report += `0                  Number of CMs (Andon Board):    0\n`;
+           report += `Quarterly PMs:     ${pmByFrequency['Quarterly'].toString().padStart(3)}\n`;
+           report += `Monthly PMs:       ${pmByFrequency['Monthly'].toString().padStart(3)}      `;
+           report += `CMs Closed         Number of CM Hours Worked:     0.00\n`;
+           report += `Bi-Monthly PMs:    ${pmByFrequency['Bi-Monthly'].toString().padStart(3)}      `;
+           report += `0\n`;
+           report += `Weekly PMs:        ${pmByFrequency['Weekly'].toString().padStart(3)}\n\n`;
+           
+           // Completion rate
+           const completionColor = completionRate >= 90 ? "GREEN" : completionRate >= 70 ? "YELLOW" : "RED";
+           report += `                   ${completionRate}%\n`;
+           report += `               [${completionColor}]\n\n`;
+           
+           // Employee section
+           report += "PMs Completed Per Employee:\n";
+           report += "-".repeat(30) + "\n";
+           
+           employees.forEach(employee => {
+               const count = employeeCounts[employee] || 0;
+               report += `${employee}:`.padEnd(20) + count.toString().padStart(3) + "\n";
+           });
+           
+           return report;
+       }
 
-        // Schedule download
-        window.downloadScheduleCSV = async function() {
-            const weekStart = document.getElementById('week-start').value;
-            if (!weekStart) {
-                showMessage('pm-schedule', 'error', 'Please select a week start date');
-                return;
-            }
-            
-            try {
-                const scheduleRef = ref(database, 'weekly_schedules');
-                const snapshot = await get(scheduleRef);
-                
-                if (snapshot.exists()) {
-                    const schedules = Object.values(snapshot.val())
-                        .filter(schedule => schedule.week_start_date === weekStart);
-                    
-                    if (schedules.length === 0) {
-                        showMessage('pm-schedule', 'error', 'No schedule found for this week');
-                        return;
-                    }
-                    
-                    // Create CSV data
-                    const csvData = schedules.map(schedule => {
-                        const equipment = equipmentData.find(eq => eq.bfm_equipment_no === schedule.bfm_equipment_no);
-                        return {
-                            'Week Start': schedule.week_start_date,
-                            'BFM Equipment No': schedule.bfm_equipment_no,
-                            'Description': equipment ? equipment.description : '',
-                            'Site Location': equipment ? equipment.site_location || '' : '',
-                            'PM Frequency': schedule.pm_frequency,
-                            'Assigned Technician': schedule.assigned_technician,
-                            'Status': schedule.status
-                        };
-                    });
-                    
-                    // Convert to CSV
-                    const headers = Object.keys(csvData[0]);
-                    const csvContent = [
-                        headers.join(','),
-                        ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-                    ].join('\n');
-                    
-                    // Download
-                    const blob = new Blob([csvContent], { type: 'text/csv' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `PM_Schedule_Week_${weekStart}.csv`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    
-                    showMessage('pm-schedule', 'success', '✅ Schedule CSV downloaded successfully!');
-                } else {
-                    showMessage('pm-schedule', 'error', 'No schedules found');
-                }
-            } catch (error) {
-                console.error('Error downloading schedule:', error);
-                showMessage('pm-schedule', 'error', '❌ Failed to download schedule CSV: ' + error.message);
-            }
-        }
+       window.printReport = function() {
+           const reportContent = document.getElementById('report-content').textContent;
+           if (!reportContent || reportContent.includes('No report generated yet')) {
+               showMessage('reports', 'error', 'No report to print. Generate a report first.');
+               return;
+           }
+           
+           const printWindow = window.open('', '_blank');
+           printWindow.document.write(`
+               <html>
+               <head>
+                   <title>AIT Performance Report</title>
+                   <style>
+                       body { font-family: 'Courier New', monospace; margin: 20px; }
+                       pre { white-space: pre-wrap; }
+                   </style>
+               </head>
+               <body>
+                   <pre>${reportContent}</pre>
+               </body>
+               </html>
+           `);
+           printWindow.document.close();
+           printWindow.print();
+       }
 
-        window.generateAllSchedules = async function() {
-            if (!confirm('This will generate PM schedules for the rest of the year. Continue?')) {
-                return;
-            }
-            
-            try {
-                showLoading('schedule-loading');
-                
-                const today = new Date();
-                const endOfYear = new Date(today.getFullYear(), 11, 31);
-                const daysRemaining = Math.floor((endOfYear - today) / (24 * 60 * 60 * 1000));
-                const weeksRemaining = Math.floor(daysRemaining / 7) + 1;
-                
-                let totalScheduled = 0;
-                let currentWeekStart = new Date(today);
-                
-                for (let week = 0; week < weeksRemaining; week++) {
-                    const weekStartStr = currentWeekStart.toISOString().split('T')[0];
-                    
-                    // Generate priority-based schedule for this week
-                    const equipmentWithPriority = equipmentData.map(eq => {
-                        const priority = calculatePriority(eq.next_pm_date, eq.pm_frequency, currentWeekStart);
-                        return { ...eq, priority };
-                    }).sort((a, b) => b.priority - a.priority);
-                    
-                    // Schedule up to 110 PMs
-                    const targetPMs = Math.min(110, equipmentWithPriority.length);
-                    
-                    for (let i = 0; i < targetPMs; i++) {
-                        const equipment = equipmentWithPriority[i];
-                        const assignedTechnician = employees[i % employees.length];
-                        
-                        const scheduleData = {
-                            week_start_date: weekStartStr,
-                            bfm_equipment_no: equipment.bfm_equipment_no,
-                            pm_frequency: equipment.pm_frequency,
-                            assigned_technician: assignedTechnician,
-                            status: 'Pending',
-                            created_date: new Date().toISOString()
-                        };
-                        
-                        const scheduleRef = ref(database, 'weekly_schedules');
-                        const newScheduleRef = push(scheduleRef);
-                        await set(newScheduleRef, scheduleData);
-                        totalScheduled++;
-                    }
-                    
-                    // Move to next week
-                    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-                }
-                
-                showMessage('pm-schedule', 'success', 
-                    `✅ Generated ${totalScheduled} PMs across ${weeksRemaining} weeks for the rest of ${today.getFullYear()}`);
-                
-            } catch (error) {
-                console.error('Error generating all schedules:', error);
-                showMessage('pm-schedule', 'error', '❌ Failed to generate all schedules: ' + error.message);
-            } finally {
-                hideLoading('schedule-loading');
-            }
-        }
+       // Schedule download
+       window.downloadScheduleCSV = async function() {
+           const weekStart = document.getElementById('week-start').value;
+           if (!weekStart) {
+               showMessage('pm-schedule', 'error', 'Please select a week start date');
+               return;
+           }
+           
+           try {
+               const scheduleRef = ref(database, 'weekly_schedules');
+               const snapshot = await get(scheduleRef);
+               
+               if (snapshot.exists()) {
+                   const schedules = Object.values(snapshot.val())
+                       .filter(schedule => schedule.week_start_date === weekStart);
+                   
+                   if (schedules.length === 0) {
+                       showMessage('pm-schedule', 'error', 'No schedule found for this week');
+                       return;
+                   }
+                   
+                   // Create CSV data
+                   const csvData = schedules.map(schedule => {
+                       const equipment = equipmentData.find(eq => eq.bfm_equipment_no === schedule.bfm_equipment_no);
+                       return {
+                           'Week Start': schedule.week_start_date,
+                           'BFM Equipment No': schedule.bfm_equipment_no,
+                           'Description': equipment ? equipment.description : '',
+                           'Site Location': equipment ? equipment.site_location || '' : '',
+                           'PM Frequency': schedule.pm_frequency,
+                           'Assigned Technician': schedule.assigned_technician,
+                           'Status': schedule.status
+                       };
+                   });
+                   
+                   // Convert to CSV
+                   const headers = Object.keys(csvData[0]);
+                   const csvContent = [
+                       headers.join(','),
+                       ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+                   ].join('\n');
+                   
+                   // Download
+                   const blob = new Blob([csvContent], { type: 'text/csv' });
+                   const url = window.URL.createObjectURL(blob);
+                   const a = document.createElement('a');
+                   a.href = url;
+                   a.download = `PM_Schedule_Week_${weekStart}.csv`;
+                   document.body.appendChild(a);
+                   a.click();
+                   window.URL.revokeObjectURL(url);
+                   document.body.removeChild(a);
+                   
+                   showMessage('pm-schedule', 'success', '✅ Schedule CSV downloaded successfully!');
+               } else {
+                   showMessage('pm-schedule', 'error', 'No schedules found');
+               }
+           } catch (error) {
+               console.error('Error downloading schedule:', error);
+               showMessage('pm-schedule', 'error', '❌ Failed to download schedule CSV: ' + error.message);
+           }
+       }
 
-        // Utility Functions
-        function showMessage(tabId, type, message) {
-            const containerId = `${tabId.replace('-', '-')}message-container`;
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            
-            const messageClass = type === 'success' ? 'success-message' : 'error-message';
-            container.innerHTML = `<div class="${messageClass}">${message}</div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 5000);
-        }
+       window.generateAllSchedules = async function() {
+           if (!confirm('This will generate PM schedules for the rest of the year. Continue?')) {
+               return;
+           }
+           
+           try {
+               showLoading('schedule-loading');
+               
+               const today = new Date();
+               const endOfYear = new Date(today.getFullYear(), 11, 31);
+               const daysRemaining = Math.floor((endOfYear - today) / (24 * 60 * 60 * 1000));
+               const weeksRemaining = Math.floor(daysRemaining / 7) + 1;
+               
+               let totalScheduled = 0;
+               let currentWeekStart = new Date(today);
+               
+               for (let week = 0; week < weeksRemaining; week++) {
+                   const weekStartStr = currentWeekStart.toISOString().split('T')[0];
+                   
+                   // Filter equipment with valid PM frequencies
+                   const validEquipment = equipmentData.filter(eq => 
+                       eq.pm_frequency && 
+                       eq.pm_frequency !== 'undefined' && 
+                       eq.pm_frequency !== 'Not Set' &&
+                       pmFrequencies.hasOwnProperty(eq.pm_frequency)
+                   );
+                   
+                   // Generate priority-based schedule for this week
+                   const equipmentWithPriority = validEquipment.map(eq => {
+                       const priority = calculatePriority(eq.next_pm_date, eq.pm_frequency, currentWeekStart);
+                       return { ...eq, priority };
+                   }).sort((a, b) => b.priority - a.priority);
+                   
+                   // Schedule up to 110 PMs
+                   const targetPMs = Math.min(110, equipmentWithPriority.length);
+                   
+                   for (let i = 0; i < targetPMs; i++) {
+                       const equipment = equipmentWithPriority[i];
+                       const assignedTechnician = employees[i % employees.length];
+                       
+                       const scheduleData = {
+                           week_start_date: weekStartStr,
+                           bfm_equipment_no: equipment.bfm_equipment_no,
+                           pm_frequency: equipment.pm_frequency,
+                           assigned_technician: assignedTechnician,
+                           status: 'Pending',
+                           created_date: new Date().toISOString()
+                       };
+                       
+                       const scheduleRef = ref(database, 'weekly_schedules');
+                       const newScheduleRef = push(scheduleRef);
+                       await set(newScheduleRef, scheduleData);
+                       totalScheduled++;
+                   }
+                   
+                   // Move to next week
+                   currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+               }
+               
+               showMessage('pm-schedule', 'success', 
+                   `✅ Generated ${totalScheduled} PMs across ${weeksRemaining} weeks for the rest of ${today.getFullYear()}`);
+               
+           } catch (error) {
+               console.error('Error generating all schedules:', error);
+               showMessage('pm-schedule', 'error', '❌ Failed to generate all schedules: ' + error.message);
+           } finally {
+               hideLoading('schedule-loading');
+           }
+       }
 
-        function showLoading(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) element.style.display = 'block';
-        }
+       // Utility Functions
+       function showMessage(tabId, type, message) {
+           const containerId = `${tabId.replace('-', '-')}message-container`;
+           const container = document.getElementById(containerId);
+           if (!container) return;
+           
+           const messageClass = type === 'success' ? 'success-message' : 'error-message';
+           container.innerHTML = `<div class="${messageClass}">${message}</div>`;
+           
+           setTimeout(() => {
+               container.innerHTML = '';
+           }, 5000);
+       }
 
-        function hideLoading(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) element.style.display = 'none';
-        }
+       function showLoading(elementId) {
+           const element = document.getElementById(elementId);
+           if (element) element.style.display = 'block';
+       }
 
-        function showContainer(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) element.style.display = 'block';
-        }
+       function hideLoading(elementId) {
+           const element = document.getElementById(elementId);
+           if (element) element.style.display = 'none';
+       }
 
-        function hideContainer(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) element.style.display = 'none';
-        }
-    </script>
+       function showContainer(elementId) {
+           const element = document.getElementById(elementId);
+           if (element) element.style.display = 'block';
+       }
+
+       function hideContainer(elementId) {
+           const element = document.getElementById(elementId);
+           if (element) element.style.display = 'none';
+       }
+   </script>
 </body>
 </html>
