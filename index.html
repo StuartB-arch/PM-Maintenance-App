@@ -832,7 +832,9 @@ No report generated yet. Click "Generate Report" to create a performance report.
                     const data = snapshot.val();
                     equipmentData = Object.entries(data).map(([key, value]) => ({
                         id: key,
-                        ...value
+                        ...value,
+                        // Set default PM frequency if undefined
+                        pm_frequency: value.pm_frequency || 'Monthly'
                     }));
                     displayEquipmentData(equipmentData);
                     showContainer('equipment-container');
