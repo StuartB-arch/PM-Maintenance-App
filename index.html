@@ -3,22 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PM Maintenance Management</title>
+    <title>AIT Preventive Maintenance Management System</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f5f5f5;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
+            min-height: 100vh;
         }
         
         .header {
@@ -30,22 +28,24 @@
         
         .header h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 28px;
         }
         
         .tabs {
             display: flex;
             background-color: #e1e1e1;
+            overflow-x: auto;
         }
         
         .tab {
             flex: 1;
+            min-width: 150px;
             padding: 15px;
             text-align: center;
             cursor: pointer;
             border: none;
             background-color: #e1e1e1;
-            font-size: 16px;
+            font-size: 14px;
             transition: background-color 0.3s;
         }
         
@@ -68,7 +68,7 @@
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .form-group label {
@@ -80,90 +80,100 @@
         
         .form-group input, .form-group select, .form-group textarea {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 16px;
+            font-size: 14px;
             box-sizing: border-box;
         }
         
         .form-group textarea {
-            height: 100px;
+            height: 80px;
             resize: vertical;
         }
         
-        .submit-btn {
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .btn {
             background-color: #464775;
             color: white;
-            padding: 12px 30px;
+            padding: 10px 20px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             transition: background-color 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
         }
         
-        .submit-btn:hover {
+        .btn:hover {
             background-color: #5a5a7a;
         }
         
-        .submit-btn:disabled {
+        .btn:disabled {
             background-color: #ccc;
             cursor: not-allowed;
         }
         
-        .records-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            overflow-x: auto;
+        .btn-danger {
+            background-color: #dc3545;
         }
         
-        .records-table th, .records-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .records-table th {
-            background-color: #464775;
-            color: white;
-            position: sticky;
-            top: 0;
-        }
-        
-        .records-table tr:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .loading {
-            text-align: center;
-            color: #666;
-            padding: 20px;
+        .btn-danger:hover {
+            background-color: #c82333;
         }
         
         .success-message {
             background-color: #d4edda;
             color: #155724;
-            padding: 15px;
+            padding: 10px;
             border-radius: 4px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-left: 4px solid #28a745;
         }
         
         .error-message {
             background-color: #f8d7da;
             color: #721c24;
-            padding: 15px;
+            padding: 10px;
             border-radius: 4px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-left: 4px solid #dc3545;
         }
         
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
             font-size: 12px;
+        }
+        
+        .data-table th {
+            background-color: #464775;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: bold;
         }
         
@@ -182,21 +192,29 @@
             color: #0c5460;
         }
         
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        .status-deleted {
+            background-color: #f8d7da;
+            color: #721c24;
         }
         
-        .table-container {
-            overflow-x: auto;
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+        
+        .search-controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
         }
         
         .connection-status {
             padding: 10px;
             text-align: center;
             border-radius: 4px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .connected {
@@ -209,6 +227,12 @@
             color: #721c24;
         }
         
+        .table-container {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
         @media (max-width: 768px) {
             .tabs {
                 flex-direction: column;
@@ -218,17 +242,12 @@
                 grid-template-columns: 1fr;
             }
             
-            .records-table {
-                font-size: 14px;
-            }
-            
             .container {
-                margin: 10px;
-                border-radius: 4px;
+                margin: 0;
             }
             
             body {
-                padding: 10px;
+                padding: 0;
             }
         }
     </style>
@@ -236,80 +255,119 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 PM Maintenance Management</h1>
-            <p>Real-time Maintenance Tracking System</p>
+            <h1>🔧 AIT Preventive Maintenance Management System</h1>
+            <p>Real-time PM Tracking with Firebase & Automatic CSV Updates</p>
         </div>
         
         <div id="connection-status" class="connection-status disconnected">
-            📡 Connecting to database...
+            📡 Connecting to Firebase...
         </div>
         
         <div class="tabs">
-            <button class="tab active" onclick="showTab('log-maintenance')">📝 Log Maintenance</button>
-            <button class="tab" onclick="showTab('view-records')">📊 View Records</button>
+            <button class="tab active" onclick="showTab('equipment-list')">Equipment List</button>
+            <button class="tab" onclick="showTab('pm-entry')">PM Completion Entry</button>
+            <button class="tab" onclick="showTab('pm-schedule')">PM Schedule</button>
+            <button class="tab" onclick="showTab('pm-management')">PM Management</button>
+            <button class="tab" onclick="showTab('equipment-search')">Equipment Search</button>
+            <button class="tab" onclick="showTab('reports')">Performance Reports</button>
+            <button class="tab" onclick="showTab('add-equipment')">Add New Equipment</button>
         </div>
         
-        <div id="log-maintenance" class="tab-content active">
-            <h3>📝 Log Maintenance Activity</h3>
-            <p>Complete the form below to log maintenance work. Data syncs in real-time with your team.</p>
+        <!-- Equipment List Tab -->
+        <div id="equipment-list" class="tab-content active">
+            <h3>📋 Equipment List</h3>
+            <div style="margin-bottom: 15px;">
+                <button class="btn" onclick="loadEquipmentData()">🔄 Refresh Equipment List</button>
+                <button class="btn" onclick="exportEquipmentCSV()">💾 Download Updated CSV</button>
+                <button class="btn" onclick="importEquipmentCSV()">📁 Import Equipment CSV</button>
+            </div>
             
-            <div id="message-container"></div>
+            <div id="equipment-message-container"></div>
+            <div id="equipment-loading" class="loading">Loading equipment data...</div>
+            <div id="equipment-container" style="display: none;">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>SAP Material No.</th>
+                                <th>BFM Equipment No.</th>
+                                <th>Description</th>
+                                <th>Site Location</th>
+                                <th>Last PM Date</th>
+                                <th>Next PM Date</th>
+                                <th>PM Frequency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="equipment-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PM Completion Entry Tab -->
+        <div id="pm-entry" class="tab-content">
+            <h3>📝 PM Completion Entry</h3>
             
-            <form id="maintenance-form">
+            <div id="pm-message-container"></div>
+            
+            <form id="pm-completion-form">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="equipment-id">Equipment/Asset ID *</label>
-                        <input type="text" id="equipment-id" placeholder="e.g., PUMP-001, HVAC-A2" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="maintenance-type">Maintenance Type *</label>
-                        <select id="maintenance-type" required>
-                            <option value="">Select Type</option>
-                            <option value="Preventive">Preventive</option>
-                            <option value="Corrective">Corrective</option>
-                            <option value="Emergency">Emergency</option>
-                            <option value="Inspection">Inspection</option>
-                            <option value="Calibration">Calibration</option>
+                        <label for="technician">Technician *</label>
+                        <select id="technician" required>
+                            <option value="">Select Technician</option>
+                            <option value="Wayne Dunnam">Wayne Dunnam</option>
+                            <option value="James Dunnam">James Dunnam</option>
+                            <option value="Jerone Bosarge">Jerone Bosarge</option>
+                            <option value="Mark Michael">Mark Michael</option>
+                            <option value="Jon Hymel">Jon Hymel</option>
+                            <option value="Rey Marikit">Rey Marikit</option>
+                            <option value="Ronald Hough">Ronald Hough</option>
+                            <option value="Nick Whisenant">Nick Whisenant</option>
+                            <option value="Nate Williams">Nate Williams</option>
                         </select>
                     </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="technician-name">Technician Name *</label>
-                        <input type="text" id="technician-name" placeholder="Your name" required>
-                    </div>
                     
                     <div class="form-group">
-                        <label for="date-completed">Date Completed *</label>
-                        <input type="date" id="date-completed" required>
+                        <label for="equipment-search">Equipment (Search BFM/SAP/Description) *</label>
+                        <input type="text" id="equipment-search" placeholder="Type to search equipment..." oninput="searchEquipment()">
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="work-description">Description of Work Performed *</label>
-                    <textarea id="work-description" placeholder="Describe the maintenance work completed in detail..." required></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="parts-used">Parts/Materials Used</label>
-                    <textarea id="parts-used" placeholder="List any parts, materials, or consumables used..."></textarea>
+                    <label for="selected-equipment">Select Equipment *</label>
+                    <select id="selected-equipment" required>
+                        <option value="">Search and select equipment above</option>
+                    </select>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="labor-hours">Labor Hours</label>
-                        <input type="number" id="labor-hours" step="0.25" min="0" placeholder="e.g., 2.5">
+                        <label for="hours-worked">Hours Worked *</label>
+                        <input type="number" id="hours-worked" step="0.25" min="0" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="next-maintenance">Next Maintenance Due</label>
-                        <input type="date" id="next-maintenance">
+                        <label for="completion-date">Completion Date *</label>
+                        <input type="date" id="completion-date" required>
                     </div>
                 </div>
                 
                 <div class="form-row">
+                    <div class="form-group">
+                        <label for="pm-type">PM Type *</label>
+                        <select id="pm-type" required>
+                            <option value="">Select Type</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Bi-Monthly">Bi-Monthly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Quarterly">Quarterly</option>
+                            <option value="Six Month">Six Month</option>
+                            <option value="Annual">Annual</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="status">Status *</label>
                         <select id="status" required>
@@ -319,48 +377,297 @@
                             <option value="Pending">Pending</option>
                         </select>
                     </div>
-                    
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" placeholder="Enter any notes or observations..."></textarea>
+                </div>
+                
+                <button type="submit" class="btn" id="submit-pm-btn">Submit PM Completion</button>
+            </form>
+            
+            <h4>Recent PM Completions</h4>
+            <div id="recent-pm-loading" class="loading">Loading recent completions...</div>
+            <div id="recent-pm-container" style="display: none;">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Technician</th>
+                                <th>Equipment</th>
+                                <th>Hours</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-pm-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PM Schedule Tab -->
+        <div id="pm-schedule" class="tab-content">
+            <h3>📅 PM Schedule Generation</h3>
+            
+            <div class="search-controls">
+                <div class="form-row">
                     <div class="form-group">
-                        <label for="priority">Priority</label>
-                        <select id="priority">
-                            <option value="">Select Priority</option>
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                            <option value="Critical">Critical</option>
+                        <label for="week-start">Week Starting</label>
+                        <input type="date" id="week-start">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+                        <button class="btn" onclick="generateWeeklySchedule()">Generate Weekly Schedule</button>
+                        <button class="btn" onclick="generateAllSchedules()">Generate All Schedules for Year</button>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn" onclick="viewPreviousWeek()">← Previous Week</button>
+                    <button class="btn" onclick="viewNextWeek()">Next Week →</button>
+                    <button class="btn" onclick="downloadScheduleCSV()">📋 Download Schedule CSV</button>
+                </div>
+            </div>
+            
+            <div id="schedule-message-container"></div>
+            <div id="schedule-loading" class="loading" style="display: none;">Generating schedule...</div>
+            <div id="schedule-container">
+                <h4>Current Week Schedule</h4>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>BFM Equipment No.</th>
+                                <th>Description</th>
+                                <th>Location</th>
+                                <th>PM Frequency</th>
+                                <th>Assigned Technician</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PM Management Tab -->
+        <div id="pm-management" class="tab-content">
+            <h3>🛠️ PM Management</h3>
+            
+            <div class="search-controls">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mgmt-from-date">From Date</label>
+                        <input type="date" id="mgmt-from-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="mgmt-to-date">To Date</label>
+                        <input type="date" id="mgmt-to-date">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mgmt-technician">Technician</label>
+                        <select id="mgmt-technician">
+                            <option value="">All Technicians</option>
+                            <option value="Wayne Dunnam">Wayne Dunnam</option>
+                            <option value="James Dunnam">James Dunnam</option>
+                            <option value="Jerone Bosarge">Jerone Bosarge</option>
+                            <option value="Mark Michael">Mark Michael</option>
+                            <option value="Jon Hymel">Jon Hymel</option>
+                            <option value="Rey Marikit">Rey Marikit</option>
+                            <option value="Ronald Hough">Ronald Hough</option>
+                            <option value="Nick Whisenant">Nick Whisenant</option>
+                            <option value="Nate Williams">Nate Williams</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mgmt-equipment">Equipment</label>
+                        <input type="text" id="mgmt-equipment" placeholder="BFM No. or Description">
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn" onclick="searchPMCompletions()">Search PMs</button>
+                    <button class="btn" onclick="refreshPMManagement()">Refresh</button>
+                    <label style="margin-left: 20px;">
+                        <input type="checkbox" id="show-deleted"> Show Deleted PMs
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <button class="btn btn-danger" onclick="deleteSelectedPM()">Delete Selected PM</button>
+                <button class="btn" onclick="restoreDeletedPM()">Restore Deleted PM</button>
+            </div>
+            
+            <div id="pm-mgmt-message-container"></div>
+            <div id="pm-mgmt-loading" class="loading">Loading PM completions...</div>
+            <div id="pm-mgmt-container" style="display: none;">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Technician</th>
+                                <th>BFM No.</th>
+                                <th>Description</th>
+                                <th>Hours</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pm-mgmt-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Equipment Search Tab -->
+        <div id="equipment-search" class="tab-content">
+            <h3>🔍 Equipment Search</h3>
+            
+            <div class="search-controls">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="search-criteria">Search by</label>
+                        <select id="search-criteria">
+                            <option value="All">All</option>
+                            <option value="SAP Material No.">SAP Material No.</option>
+                            <option value="BFM Equipment No.">BFM Equipment No.</option>
+                            <option value="Description">Description</option>
+                            <option value="Location">Location</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="search-term">Search term</label>
+                        <input type="text" id="search-term" placeholder="Enter search term..." oninput="performSearch()">
+                    </div>
+                </div>
+                <button class="btn" onclick="performSearch()">Search</button>
+            </div>
+            
+            <div id="search-results">
+                <h4>Search Results</h4>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>SAP Material No.</th>
+                                <th>BFM Equipment No.</th>
+                                <th>Description</th>
+                                <th>Site Location</th>
+                                <th>Last PM</th>
+                                <th>Next PM</th>
+                            </tr>
+                        </thead>
+                        <tbody id="search-results-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Reports Tab -->
+        <div id="reports" class="tab-content">
+            <h3>📊 Performance Reports</h3>
+            
+            <div class="search-controls">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="report-type">Report Type</label>
+                        <select id="report-type">
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Year to Date">Year to Date</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="report-date">Report Date</label>
+                        <input type="date" id="report-date">
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn" onclick="generateReport()">Generate Report</button>
+                    <button class="btn" onclick="printReport()">Print Report</button>
+                </div>
+            </div>
+            
+            <div id="report-container">
+                <h4>Performance Report</h4>
+                <pre id="report-content" style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto;">
+No report generated yet. Click "Generate Report" to create a performance report.
+                </pre>
+            </div>
+        </div>
+        
+        <!-- Add New Equipment Tab -->
+        <div id="add-equipment" class="tab-content">
+            <h3>➕ Add New Equipment</h3>
+            
+            <div id="new-equipment-message-container"></div>
+            
+            <form id="new-equipment-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new-sap">SAP Material No.</label>
+                        <input type="text" id="new-sap">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-bfm">BFM Equipment No. *</label>
+                        <input type="text" id="new-bfm" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new-description">Description *</label>
+                    <input type="text" id="new-description" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new-location">Site Location</label>
+                        <input type="text" id="new-location">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-frequency">PM Frequency *</label>
+                        <select id="new-frequency" required>
+                            <option value="">Select Frequency</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Bi-Monthly">Bi-Monthly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Quarterly">Quarterly</option>
+                            <option value="Six Month">Six Month</option>
+                            <option value="Annual">Annual</option>
                         </select>
                     </div>
                 </div>
                 
-                <button type="submit" class="submit-btn" id="submit-btn">Submit Maintenance Log</button>
+                <button type="submit" class="btn">Add Equipment</button>
             </form>
-        </div>
-        
-        <div id="view-records" class="tab-content">
-            <h3>📊 Maintenance Records</h3>
-            <p>Real-time view of all maintenance activities. Data updates automatically across all team members.</p>
             
-            <div id="loading" class="loading">
-                <div>Loading maintenance records...</div>
-                <div style="margin-top: 10px;">📡 Connecting to database</div>
-            </div>
-            
-            <div id="records-container" style="display: none;">
+            <h4>Recently Added Equipment</h4>
+            <div id="recent-equipment-loading" class="loading">Loading recent additions...</div>
+            <div id="recent-equipment-container" style="display: none;">
                 <div class="table-container">
-                    <table class="records-table">
+                    <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Equipment ID</th>
-                                <th>Type</th>
-                                <th>Technician</th>
+                                <th>SAP Material No.</th>
+                                <th>BFM Equipment No.</th>
                                 <th>Description</th>
-                                <th>Status</th>
-                                <th>Priority</th>
-                                <th>Next Due</th>
+                                <th>Location</th>
+                                <th>Frequency</th>
+                                <th>Date Added</th>
                             </tr>
                         </thead>
-                        <tbody id="records-tbody">
+                        <tbody id="recent-equipment-tbody">
                         </tbody>
                     </table>
                 </div>
@@ -372,23 +679,41 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getDatabase, ref, push, onValue, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+        import { getDatabase, ref, push, set, get, remove, onValue, serverTimestamp, query, orderByChild, limitToLast, startAt, endAt } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
-        // TODO: Replace with YOUR Firebase configuration from Firebase Console
+        // TODO: Replace with YOUR Firebase configuration
         const firebaseConfig = {
-			apiKey: "AIzaSyDTq2VdvCBD3IGeLoArkCqwp4PyEpJs55Q",
-			authDomain: "pm-maintenance-live-doc.firebaseapp.com",
-			databaseURL: "https://pm-maintenance-live-doc-default-rtdb.firebaseio.com",
-			projectId: "pm-maintenance-live-doc",
-			storageBucket: "pm-maintenance-live-doc.firebasestorage.app",
-			messagingSenderId: "238950691141",
-			appId: "1:238950691141:web:59a58cb2aef4cad17e8e2c"
+		  apiKey: "AIzaSyDTq2VdvCBD3IGeLoArkCqwp4PyEpJs55Q",
+		  authDomain: "pm-maintenance-live-doc.firebaseapp.com",
+		  databaseURL: "https://pm-maintenance-live-doc-default-rtdb.firebaseio.com",
+		  projectId: "pm-maintenance-live-doc",
+		  storageBucket: "pm-maintenance-live-doc.firebasestorage.app",
+		  messagingSenderId: "238950691141",
+		  appId: "1:238950691141:web:59a58cb2aef4cad17e8e2c"
 		};
 
         // Initialize Firebase
         let app, database;
         let isConnected = false;
+        let equipmentData = [];
+        let selectedPMId = null;
         
+        // PM Frequencies mapping
+        const pmFrequencies = {
+            'Weekly': 7,
+            'Bi-Monthly': 14,
+            'Monthly': 30,
+            'Quarterly': 90,
+            'Six Month': 180,
+            'Annual': 365
+        };
+
+        // Employee list
+        const employees = [
+            "Wayne Dunnam", "James Dunnam", "Jerone Bosarge", "Mark Michael", 
+            "Jon Hymel", "Rey Marikit", "Ronald Hough", "Nick Whisenant", "Nate Williams"
+        ];
+
         try {
             app = initializeApp(firebaseConfig);
             database = getDatabase(app);
@@ -398,151 +723,62 @@
             updateConnectionStatus(false);
         }
 
-        // Connection status
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            // Set default dates
+            setDefaultDates();
+            
+            if (isConnected) {
+                // Load initial data
+                loadEquipmentData();
+                loadRecentCompletions();
+                loadRecentEquipment();
+                loadWeeklySchedule();
+                searchPMCompletions();
+            }
+        }
+
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            
+            document.getElementById('completion-date').value = today;
+            document.getElementById('week-start').value = today;
+            document.getElementById('mgmt-from-date').value = thirtyDaysAgo;
+            document.getElementById('mgmt-to-date').value = today;
+            document.getElementById('report-date').value = today;
+        }
+
         function updateConnectionStatus(connected) {
             const statusDiv = document.getElementById('connection-status');
             isConnected = connected;
             
             if (connected) {
                 statusDiv.className = 'connection-status connected';
-                statusDiv.innerHTML = '✅ Connected to live database - Ready for real-time sync';
+                statusDiv.innerHTML = '✅ Connected to Firebase - Real-time sync active with automatic CSV updates';
             } else {
                 statusDiv.className = 'connection-status disconnected';
-                statusDiv.innerHTML = '❌ Database connection failed - Check your Firebase configuration';
+                statusDiv.innerHTML = '❌ Firebase connection failed - Please check your configuration';
             }
         }
 
-        // Form submission
-        document.getElementById('maintenance-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            if (!isConnected) {
-                showMessage('error', '❌ Cannot submit - Database not connected. Please check configuration.');
-                return;
-            }
-            
-            const submitBtn = document.getElementById('submit-btn');
-            const messageContainer = document.getElementById('message-container');
-            
-            // Disable submit button
-            submitBtn.disabled = true;
-            submitBtn.textContent = '📡 Submitting...';
-            
-            try {
-                // Get form data
-                const formData = {
-                    equipmentId: document.getElementById('equipment-id').value.trim(),
-                    maintenanceType: document.getElementById('maintenance-type').value,
-                    technicianName: document.getElementById('technician-name').value.trim(),
-                    dateCompleted: document.getElementById('date-completed').value,
-                    workDescription: document.getElementById('work-description').value.trim(),
-                    partsUsed: document.getElementById('parts-used').value.trim(),
-                    laborHours: document.getElementById('labor-hours').value || null,
-                    nextMaintenance: document.getElementById('next-maintenance').value || null,
-                    status: document.getElementById('status').value,
-                    priority: document.getElementById('priority').value || 'Medium',
-                    timestamp: serverTimestamp(),
-                    submittedAt: new Date().toISOString(),
-                    submittedDate: new Date().toLocaleDateString(),
-                    submittedTime: new Date().toLocaleTimeString()
-                };
-                
-                // Save to Firebase
-                await push(ref(database, 'maintenance-logs'), formData);
-                
-                // Show success message
-                showMessage('success', '✅ Maintenance log submitted successfully! The record is now visible to all team members in real-time.');
-                
-                // Reset form
-                document.getElementById('maintenance-form').reset();
-                
-                // Reset date to today
-                document.getElementById('date-completed').valueAsDate = new Date();
-                
-            } catch (error) {
-                console.error('Error submitting form:', error);
-                showMessage('error', '❌ Error submitting maintenance log. Please check your connection and try again.');
-            }
-            
-            // Re-enable submit button
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Maintenance Log';
-        });
-
-        // Show message function
-        function showMessage(type, text) {
-            const messageContainer = document.getElementById('message-container');
-            const messageClass = type === 'success' ? 'success-message' : 'error-message';
-            
-            messageContainer.innerHTML = `<div class="${messageClass}">${text}</div>`;
-            messageContainer.scrollIntoView({ behavior: 'smooth' });
-            
-            // Clear message after 5 seconds
-            setTimeout(() => {
-                messageContainer.innerHTML = '';
-            }, 5000);
+        // Utility functions
+        function calculateNextPMDate(completionDate, pmType) {
+            const completion = new Date(completionDate);
+            const days = pmFrequencies[pmType] || 30;
+            const nextPM = new Date(completion.getTime() + days * 24 * 60 * 60 * 1000);
+            return nextPM.toISOString().split('T')[0];
         }
 
-        // Load and display records
-        function loadRecords() {
-            if (!isConnected) {
-                document.getElementById('loading').innerHTML = '<div style="color: red;">❌ Cannot load records - Database not connected</div>';
-                return;
-            }
-            
-            const recordsRef = ref(database, 'maintenance-logs');
-            
-            onValue(recordsRef, (snapshot) => {
-                const data = snapshot.val();
-                const tbody = document.getElementById('records-tbody');
-                const loading = document.getElementById('loading');
-                const container = document.getElementById('records-container');
-                
-                // Hide loading
-                loading.style.display = 'none';
-                container.style.display = 'block';
-                
-                // Clear existing records
-                tbody.innerHTML = '';
-                
-                if (data) {
-                    // Convert to array and sort by date (newest first)
-                    const records = Object.entries(data).map(([key, value]) => ({
-                        id: key,
-                        ...value
-                    })).sort((a, b) => new Date(b.dateCompleted) - new Date(a.dateCompleted));
-                    
-                    // Add records to table
-                    records.forEach(record => {
-                        const row = tbody.insertRow();
-                        row.innerHTML = `
-                            <td>${formatDate(record.dateCompleted)}</td>
-                            <td><strong>${record.equipmentId}</strong></td>
-                            <td>${record.maintenanceType}</td>
-                            <td>${record.technicianName}</td>
-                            <td title="${record.workDescription}">${record.workDescription.length > 50 ? record.workDescription.substring(0, 50) + '...' : record.workDescription}</td>
-                            <td><span class="status-badge status-${record.status.toLowerCase().replace(' ', '-')}">${record.status}</span></td>
-                            <td>${record.priority || 'Medium'}</td>
-                            <td>${record.nextMaintenance ? formatDate(record.nextMaintenance) : 'N/A'}</td>
-                        `;
-                    });
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 40px;">No maintenance records found. Submit your first maintenance log to get started!</td></tr>';
-                }
-            }, (error) => {
-                console.error('Error loading records:', error);
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">❌ Error loading records. Please check your connection.</td></tr>';
-            });
+        function generateId() {
+            return Date.now().toString() + Math.random().toString(36).substr(2, 9);
         }
 
-        // Helper function to format dates
-        function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            const date = new Date(dateString);
-            return date.toLocaleDateString();
-        }
-
-        // Tab switching function
+        // Tab Management
         window.showTab = function(tabName) {
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.tab-content');
@@ -558,37 +794,1186 @@
             // Add active class to clicked tab
             event.target.classList.add('active');
             
-            // Load records if viewing records tab
-            if (tabName === 'view-records') {
-                loadRecords();
+            // Load tab-specific data
+            if (isConnected) {
+                switch(tabName) {
+                    case 'equipment-list':
+                        loadEquipmentData();
+                        break;
+                    case 'pm-entry':
+                        loadRecentCompletions();
+                        break;
+                    case 'pm-schedule':
+                        loadWeeklySchedule();
+                        break;
+                    case 'pm-management':
+                        searchPMCompletions();
+                        break;
+                    case 'add-equipment':
+                        loadRecentEquipment();
+                        break;
+                }
             }
-        };
+        }
 
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set default date to today
-            document.getElementById('date-completed').valueAsDate = new Date();
+        // Equipment Management
+        window.loadEquipmentData = async function() {
+            if (!isConnected) return;
             
-            // Store technician name in localStorage for convenience
-            const savedTechnician = localStorage.getItem('technicianName');
-            if (savedTechnician) {
-                document.getElementById('technician-name').value = savedTechnician;
+            try {
+                showLoading('equipment-loading');
+                hideContainer('equipment-container');
+                
+                const equipmentRef = ref(database, 'equipment');
+                const snapshot = await get(equipmentRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    equipmentData = Object.entries(data).map(([key, value]) => ({
+                        id: key,
+                        ...value
+                    }));
+                    displayEquipmentData(equipmentData);
+                    showContainer('equipment-container');
+                } else {
+                    equipmentData = [];
+                    displayEquipmentData([]);
+                    showContainer('equipment-container');
+                }
+            } catch (error) {
+                console.error('Error loading equipment:', error);
+                showMessage('equipment-list', 'error', 'Failed to load equipment data: ' + error.message);
+            } finally {
+                hideLoading('equipment-loading');
             }
+        }
+
+        function displayEquipmentData(data) {
+            const tbody = document.getElementById('equipment-tbody');
+            tbody.innerHTML = '';
             
-            // Save technician name when form is submitted
-            document.getElementById('technician-name').addEventListener('change', function() {
-                localStorage.setItem('technicianName', this.value);
+            data.forEach(equipment => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${equipment.sap_material_no || ''}</td>
+                    <td>${equipment.bfm_equipment_no}</td>
+                    <td>${equipment.description}</td>
+                    <td>${equipment.site_location || ''}</td>
+                    <td>${equipment.last_pm_date || ''}</td>
+                    <td>${equipment.next_pm_date || ''}</td>
+                    <td>${equipment.pm_frequency}</td>
+                `;
             });
+        }
+
+        // Equipment Search
+        window.searchEquipment = function() {
+            const searchTerm = document.getElementById('equipment-search').value.trim().toLowerCase();
+            const selectElement = document.getElementById('selected-equipment');
+            
+            // Clear previous options
+            selectElement.innerHTML = '<option value="">Search and select equipment above</option>';
+            
+            if (searchTerm.length < 2) return;
+            
+            const filtered = equipmentData.filter(eq => {
+                const sap = (eq.sap_material_no || '').toLowerCase();
+                const bfm = (eq.bfm_equipment_no || '').toLowerCase();
+                const desc = (eq.description || '').toLowerCase();
+                
+                return sap.includes(searchTerm) || 
+                       bfm.includes(searchTerm) || 
+                       desc.includes(searchTerm);
+            });
+            
+            filtered.slice(0, 20).forEach(eq => {
+                const option = document.createElement('option');
+                option.value = eq.bfm_equipment_no;
+                option.textContent = `${eq.bfm_equipment_no} - ${eq.description}`;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // PM Completion
+        document.getElementById('pm-completion-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await submitPMCompletion();
         });
 
-        // Auto-refresh every 30 seconds if on records tab
-        setInterval(() => {
-            if (document.getElementById('view-records').classList.contains('active') && isConnected) {
-                // Firebase real-time updates handle this automatically, but this ensures connection
-                console.log('Auto-refresh check - Firebase handles real-time updates');
+        async function submitPMCompletion() {
+            if (!isConnected) {
+                showMessage('pm-entry', 'error', 'Cannot submit - Firebase not connected');
+                return;
             }
-        }, 30000);
+            
+            const submitBtn = document.getElementById('submit-pm-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '📡 Submitting...';
+            
+            try {
+                const formData = {
+                    technician_name: document.getElementById('technician').value,
+                    bfm_equipment_no: document.getElementById('selected-equipment').value,
+                    hours_worked: parseFloat(document.getElementById('hours-worked').value),
+                    completion_date: document.getElementById('completion-date').value,
+                    pm_type: document.getElementById('pm-type').value,
+                    status: document.getElementById('status').value,
+                    notes: document.getElementById('notes').value,
+                    deleted: false,
+                    created_date: new Date().toISOString()
+                };
+                
+                // Calculate next PM date
+                const nextPMDate = calculateNextPMDate(formData.completion_date, formData.pm_type);
+                
+                // Add PM completion to Firebase
+                const pmRef = ref(database, 'pm_completions');
+                const newPMRef = push(pmRef);
+                await set(newPMRef, formData);
+                
+                // Update equipment last PM date and next PM date
+                const equipmentRef = ref(database, `equipment`);
+                const equipmentSnapshot = await get(equipmentRef);
+                
+                if (equipmentSnapshot.exists()) {
+                    const equipmentData = equipmentSnapshot.val();
+                    let equipmentKey = null;
+                    
+                    // Find the equipment by BFM number
+                    for (const [key, equipment] of Object.entries(equipmentData)) {
+                        if (equipment.bfm_equipment_no === formData.bfm_equipment_no) {
+                            equipmentKey = key;
+                            break;
+                        }
+                    }
+                    
+                    if (equipmentKey) {
+                        const equipmentUpdateRef = ref(database, `equipment/${equipmentKey}`);
+                        await set(equipmentUpdateRef, {
+                            ...equipmentData[equipmentKey],
+                            last_pm_date: formData.completion_date,
+                            next_pm_date: nextPMDate
+                        });
+                    }
+                }
+                
+                showMessage('pm-entry', 'success', 
+                    '✅ PM completion recorded successfully! Equipment dates updated and data synchronized.');
+                
+                // Reset form
+                document.getElementById('pm-completion-form').reset();
+                document.getElementById('completion-date').value = new Date().toISOString().split('T')[0];
+                
+                // Refresh data
+                await loadRecentCompletions();
+                await loadEquipmentData();
+                
+            } catch (error) {
+                console.error('Error submitting PM:', error);
+                showMessage('pm-entry', 'error', '❌ Failed to submit PM completion: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit PM Completion';
+            }
+        }
 
+        // Load Recent Completions
+        window.loadRecentCompletions = async function() {
+            if (!isConnected) return;
+            
+            try {
+                showLoading('recent-pm-loading');
+                hideContainer('recent-pm-container');
+                
+                const pmRef = ref(database, 'pm_completions');
+                const pmQuery = query(pmRef, orderByChild('completion_date'), limitToLast(50));
+                const snapshot = await get(pmQuery);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const pmArray = Object.entries(data)
+                        .map(([key, value]) => ({ id: key, ...value }))
+                        .filter(pm => !pm.deleted)
+                        .reverse(); // Show most recent first
+                    
+                    displayRecentCompletions(pmArray);
+                } else {
+                    displayRecentCompletions([]);
+                }
+                
+                showContainer('recent-pm-container');
+            } catch (error) {
+                console.error('Error loading recent completions:', error);
+            } finally {
+                hideLoading('recent-pm-loading');
+            }
+        }
+
+        function displayRecentCompletions(data) {
+            const tbody = document.getElementById('recent-pm-tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(pm => {
+                // Find equipment description
+                const equipment = equipmentData.find(eq => eq.bfm_equipment_no === pm.bfm_equipment_no);
+                const description = equipment ? equipment.description : pm.bfm_equipment_no;
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${pm.completion_date}</td>
+                    <td>${pm.technician_name}</td>
+                    <td>${description}</td>
+                    <td>${pm.hours_worked}</td>
+                    <td>${pm.pm_type}</td>
+                    <td><span class="status-badge status-${pm.status.toLowerCase().replace(' ', '-')}">${pm.status}</span></td>
+                `;
+            });
+        }
+
+        // PM Schedule Generation
+        window.generateWeeklySchedule = async function() {
+            if (!isConnected) {
+                showMessage('pm-schedule', 'error', 'Cannot generate schedule - Firebase not connected');
+                return;
+            }
+            
+            const weekStart = document.getElementById('week-start').value;
+            if (!weekStart) {
+                showMessage('pm-schedule', 'error', 'Please select a week start date');
+                return;
+            }
+            
+            try {
+                showLoading('schedule-loading');
+                
+                // Clear existing schedule for this week
+                const scheduleRef = ref(database, 'weekly_schedules');
+                const existingSnapshot = await get(scheduleRef);
+                
+                if (existingSnapshot.exists()) {
+                    const schedules = existingSnapshot.val();
+                    for (const [key, schedule] of Object.entries(schedules)) {
+                        if (schedule.week_start_date === weekStart) {
+                            await remove(ref(database, `weekly_schedules/${key}`));
+                        }
+                    }
+                }
+                
+                // Generate priority-based schedule
+                const weekStartDate = new Date(weekStart);
+                const equipmentWithPriority = equipmentData.map(eq => {
+                    const priority = calculatePriority(eq.next_pm_date, eq.pm_frequency, weekStartDate);
+                    return { ...eq, priority };
+                }).sort((a, b) => b.priority - a.priority);
+                
+                // Schedule up to 110 PMs with technician assignments
+                const targetPMs = Math.min(110, equipmentWithPriority.length);
+                let scheduledCount = 0;
+                
+                for (let i = 0; i < targetPMs; i++) {
+                    const equipment = equipmentWithPriority[i];
+                    const assignedTechnician = employees[i % employees.length];
+                    
+                    const scheduleData = {
+                        week_start_date: weekStart,
+                        bfm_equipment_no: equipment.bfm_equipment_no,
+                        pm_frequency: equipment.pm_frequency,
+                        assigned_technician: assignedTechnician,
+                        status: 'Pending',
+                        created_date: new Date().toISOString()
+                    };
+                    
+                    const newScheduleRef = push(scheduleRef);
+                    await set(newScheduleRef, scheduleData);
+                    scheduledCount++;
+                }
+                
+                showMessage('pm-schedule', 'success', 
+                    `✅ Generated ${scheduledCount} PMs for week starting ${weekStart}`);
+                await loadWeeklySchedule();
+                
+            } catch (error) {
+                console.error('Error generating schedule:', error);
+                showMessage('pm-schedule', 'error', '❌ Failed to generate schedule: ' + error.message);
+            } finally {
+                hideLoading('schedule-loading');
+            }
+        }
+
+        function calculatePriority(nextPMDate, frequency, weekStart) {
+            const basePriorities = {
+                'Weekly': 1000,
+                'Bi-Monthly': 800,
+                'Monthly': 600,
+                'Quarterly': 400,
+                'Six Month': 200,
+                'Annual': 100
+            };
+            
+            const basePriority = basePriorities[frequency] || 50;
+            
+            if (!nextPMDate) return basePriority + 500;
+            
+            try {
+                const nextPM = new Date(nextPMDate);
+                const daysDiff = Math.floor((nextPM - weekStart) / (24 * 60 * 60 * 1000));
+                
+                if (daysDiff <= 0) return basePriority + 1000 + Math.abs(daysDiff);
+                else if (daysDiff <= 7) return basePriority + 800;
+                else if (daysDiff <= 30) return basePriority + 500;
+                else if (daysDiff <= 90) return basePriority + 200;
+                else return basePriority;
+            } catch {
+                return basePriority + 500;
+            }
+        }
+
+        window.loadWeeklySchedule = async function() {
+            if (!isConnected) return;
+            
+            const weekStart = document.getElementById('week-start').value;
+            if (!weekStart) return;
+            
+            try {
+                const scheduleRef = ref(database, 'weekly_schedules');
+                const snapshot = await get(scheduleRef);
+                
+                if (snapshot.exists()) {
+                    const schedules = snapshot.val();
+                    const weekSchedules = Object.entries(schedules)
+                        .map(([key, value]) => ({ id: key, ...value }))
+                        .filter(schedule => schedule.week_start_date === weekStart);
+                    
+                    displayWeeklySchedule(weekSchedules);
+                } else {
+                    displayWeeklySchedule([]);
+                }
+            } catch (error) {
+                console.error('Error loading schedule:', error);
+            }
+        }
+
+        function displayWeeklySchedule(data) {
+            const tbody = document.getElementById('schedule-tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                // Find equipment details
+                const equipment = equipmentData.find(eq => eq.bfm_equipment_no === item.bfm_equipment_no);
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${item.bfm_equipment_no}</td>
+                    <td>${equipment ? equipment.description : ''}</td>
+                    <td>${equipment ? equipment.site_location || '' : ''}</td>
+                    <td>${item.pm_frequency}</td>
+                    <td>${item.assigned_technician || 'Unassigned'}</td>
+                    <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
+                `;
+            });
+        }
+
+        // Week Navigation
+        window.viewPreviousWeek = function() {
+            const weekInput = document.getElementById('week-start');
+            const currentDate = new Date(weekInput.value);
+            currentDate.setDate(currentDate.getDate() - 7);
+            weekInput.value = currentDate.toISOString().split('T')[0];
+            loadWeeklySchedule();
+        }
+
+        window.viewNextWeek = function() {
+            const weekInput = document.getElementById('week-start');
+            const currentDate = new Date(weekInput.value);
+            currentDate.setDate(currentDate.getDate() + 7);
+            weekInput.value = currentDate.toISOString().split('T')[0];
+            loadWeeklySchedule();
+        }
+
+        // PM Management
+        window.searchPMCompletions = async function() {
+            if (!isConnected) return;
+            
+            try {
+                showLoading('pm-mgmt-loading');
+                hideContainer('pm-mgmt-container');
+                
+                const pmRef = ref(database, 'pm_completions');
+                const snapshot = await get(pmRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    let pmArray = Object.entries(data).map(([key, value]) => ({ id: key, ...value }));
+                    
+                    // Apply filters
+                    const fromDate = document.getElementById('mgmt-from-date').value;
+                    const toDate = document.getElementById('mgmt-to-date').value;
+                    const technician = document.getElementById('mgmt-technician').value;
+                    const equipment = document.getElementById('mgmt-equipment').value.toLowerCase();
+                    const showDeleted = document.getElementById('show-deleted').checked;
+                    
+                    pmArray = pmArray.filter(pm => {
+                        if (pm.completion_date < fromDate || pm.completion_date > toDate) return false;
+                        if (technician && pm.technician_name !== technician) return false;
+                        if (equipment && !pm.bfm_equipment_no.toLowerCase().includes(equipment)) return false;
+                        if (!showDeleted && pm.deleted) return false;
+                        return true;
+                    });
+                    
+                    pmArray.sort((a, b) => new Date(b.completion_date) - new Date(a.completion_date));
+                    displayPMCompletions(pmArray);
+                } else {
+                    displayPMCompletions([]);
+                }
+                
+                showContainer('pm-mgmt-container');
+            } catch (error) {
+                console.error('Error searching PM completions:', error);
+            } finally {
+                hideLoading('pm-mgmt-loading');
+            }
+        }
+
+        function displayPMCompletions(data) {
+            const tbody = document.getElementById('pm-mgmt-tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(pm => {
+                const equipment = equipmentData.find(eq => eq.bfm_equipment_no === pm.bfm_equipment_no);
+                const description = equipment ? equipment.description : 'N/A';
+                const isDeleted = pm.deleted;
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td><input type="radio" name="selected-pm" value="${pm.id}" onchange="selectPM('${pm.id}')"></td>
+                    <td>${pm.id}</td>
+                    <td>${pm.completion_date}${isDeleted ? ' (DEL)' : ''}</td>
+                    <td>${pm.technician_name}</td>
+                    <td>${pm.bfm_equipment_no}</td>
+                    <td>${description}</td>
+                    <td>${pm.hours_worked}</td>
+                    <td>${pm.pm_type}</td>
+                    <td><span class="status-badge status-${isDeleted ? 'deleted' : pm.status.toLowerCase().replace(' ', '-')}">${isDeleted ? 'DELETED' : pm.status}</span></td>
+                `;
+                
+                if (isDeleted) {
+                    row.style.opacity = '0.6';
+                }
+            });
+        }
+
+        window.selectPM = function(pmId) {
+            selectedPMId = pmId;
+        }
+
+        window.deleteSelectedPM = async function() {
+            if (!selectedPMId) {
+                showMessage('pm-management', 'error', 'Please select a PM completion to delete');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this PM completion? This will update equipment dates automatically.')) {
+                return;
+            }
+            
+            try {
+                // Mark PM as deleted
+                const pmRef = ref(database, `pm_completions/${selectedPMId}`);
+                const pmSnapshot = await get(pmRef);
+                
+                if (pmSnapshot.exists()) {
+                    const pmData = pmSnapshot.val();
+                    await set(pmRef, {
+                        ...pmData,
+                        deleted: true,
+                        deleted_date: new Date().toISOString(),
+                        deleted_by: 'Web User'
+                    });
+                    
+                    // Recalculate equipment dates
+                    await recalculateEquipmentDates(pmData.bfm_equipment_no);
+                    
+                    showMessage('pm-management', 'success', '✅ PM completion deleted successfully. Equipment dates updated.');
+                    selectedPMId = null;
+                    await searchPMCompletions();
+                    await loadEquipmentData();
+                }
+            } catch (error) {
+                console.error('Error deleting PM:', error);
+                showMessage('pm-management', 'error', '❌ Failed to delete PM completion: ' + error.message);
+            }
+        }
+
+        window.restoreDeletedPM = async function() {
+            if (!selectedPMId) {
+                showMessage('pm-management', 'error', 'Please select a deleted PM completion to restore');
+                return;
+            }
+            
+            try {
+                // Restore PM
+                const pmRef = ref(database, `pm_completions/${selectedPMId}`);
+                const pmSnapshot = await get(pmRef);
+                
+                if (pmSnapshot.exists()) {
+                    const pmData = pmSnapshot.val();
+                    await set(pmRef, {
+                        ...pmData,
+                        deleted: false,
+                        deleted_date: null,
+                        deleted_by: null
+                    });
+                    
+                    // Recalculate equipment dates
+                    await recalculateEquipmentDates(pmData.bfm_equipment_no);
+                    
+                    showMessage('pm-management', 'success', '✅ PM completion restored successfully. Equipment dates updated.');
+                    selectedPMId = null;
+                    await searchPMCompletions();
+                    await loadEquipmentData();
+                }
+            } catch (error) {
+                console.error('Error restoring PM:', error);
+                showMessage('pm-management', 'error', '❌ Failed to restore PM completion: ' + error.message);
+            }
+        }
+
+        async function recalculateEquipmentDates(bfmEquipmentNo) {
+            try {
+                // Find most recent non-deleted PM for this equipment
+                const pmRef = ref(database, 'pm_completions');
+                const snapshot = await get(pmRef);
+                
+                let lastPMDate = '';
+                let nextPMDate = '';
+                
+                if (snapshot.exists()) {
+                    const pms = Object.values(snapshot.val())
+                        .filter(pm => pm.bfm_equipment_no === bfmEquipmentNo && !pm.deleted)
+                        .sort((a, b) => new Date(b.completion_date) - new Date(a.completion_date));
+                    
+                    if (pms.length > 0) {
+                        const mostRecentPM = pms[0];
+                        lastPMDate = mostRecentPM.completion_date;
+                        nextPMDate = calculateNextPMDate(mostRecentPM.completion_date, mostRecentPM.pm_type);
+                    }
+                }
+                
+                // Update equipment
+                const equipmentRef = ref(database, 'equipment');
+                const equipmentSnapshot = await get(equipmentRef);
+                
+                if (equipmentSnapshot.exists()) {
+                    const equipmentData = equipmentSnapshot.val();
+                    for (const [key, equipment] of Object.entries(equipmentData)) {
+                        if (equipment.bfm_equipment_no === bfmEquipmentNo) {
+                            await set(ref(database, `equipment/${key}`), {
+                                ...equipment,
+                                last_pm_date: lastPMDate,
+                                next_pm_date: nextPMDate
+                            });
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error recalculating equipment dates:', error);
+            }
+        }
+
+        window.refreshPMManagement = function() {
+            searchPMCompletions();
+        }
+
+        // Equipment Search
+        window.performSearch = function() {
+            const criteria = document.getElementById('search-criteria').value;
+            const term = document.getElementById('search-term').value.trim().toLowerCase();
+            const tbody = document.getElementById('search-results-tbody');
+            
+            tbody.innerHTML = '';
+            
+            if (!term && criteria !== 'All') return;
+            
+            const filtered = equipmentData.filter(eq => {
+                if (criteria === 'All' || !term) return true;
+                
+                const sap = (eq.sap_material_no || '').toLowerCase();
+                const bfm = (eq.bfm_equipment_no || '').toLowerCase();
+                const desc = (eq.description || '').toLowerCase();
+                const loc = (eq.site_location || '').toLowerCase();
+                
+                switch(criteria) {
+                    case 'SAP Material No.':
+                        return sap.includes(term);
+                    case 'BFM Equipment No.':
+                        return bfm.includes(term);
+                    case 'Description':
+                        return desc.includes(term);
+                    case 'Location':
+                        return loc.includes(term);
+                    default:
+                        return false;
+                }
+            });
+            
+            filtered.forEach(eq => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${eq.sap_material_no || ''}</td>
+                    <td>${eq.bfm_equipment_no}</td>
+                    <td>${eq.description}</td>
+                    <td>${eq.site_location || ''}</td>
+                    <td>${eq.last_pm_date || ''}</td>
+                    <td>${eq.next_pm_date || ''}</td>
+                `;
+            });
+        }
+
+        // Add New Equipment
+        document.getElementById('new-equipment-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await addNewEquipment();
+        });
+
+        async function addNewEquipment() {
+            if (!isConnected) {
+                showMessage('add-equipment', 'error', 'Cannot add equipment - Firebase not connected');
+                return;
+            }
+            
+            try {
+                const formData = {
+                    sap_material_no: document.getElementById('new-sap').value,
+                    bfm_equipment_no: document.getElementById('new-bfm').value,
+                    description: document.getElementById('new-description').value,
+                    site_location: document.getElementById('new-location').value,
+                    pm_frequency: document.getElementById('new-frequency').value,
+                    last_pm_date: '',
+                    next_pm_date: calculateNextPMDate(new Date().toISOString().split('T')[0], document.getElementById('new-frequency').value),
+                    created_date: new Date().toISOString()
+                };
+                
+                const equipmentRef = ref(database, 'equipment');
+                const newEquipmentRef = push(equipmentRef);
+                await set(newEquipmentRef, formData);
+                
+                showMessage('add-equipment', 'success', '✅ Equipment added successfully!');
+                
+                // Reset form
+                document.getElementById('new-equipment-form').reset();
+                
+                // Refresh data
+                await loadEquipmentData();
+                await loadRecentEquipment();
+                
+            } catch (error) {
+                console.error('Error adding equipment:', error);
+                showMessage('add-equipment', 'error', '❌ Failed to add equipment: ' + error.message);
+            }
+        }
+
+        window.loadRecentEquipment = async function() {
+            if (!isConnected) return;
+            
+            try {
+                showLoading('recent-equipment-loading');
+                hideContainer('recent-equipment-container');
+                
+                const equipmentRef = ref(database, 'equipment');
+                const snapshot = await get(equipmentRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const recentEquipment = Object.entries(data)
+                        .map(([key, value]) => ({ id: key, ...value }))
+                        .filter(eq => {
+                            const createdDate = new Date(eq.created_date || 0);
+                            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                            return createdDate > thirtyDaysAgo;
+                        })
+                        .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+                        .slice(0, 20);
+                    
+                    displayRecentEquipment(recentEquipment);
+                } else {
+                    displayRecentEquipment([]);
+                }
+                
+                showContainer('recent-equipment-container');
+            } catch (error) {
+                console.error('Error loading recent equipment:', error);
+            } finally {
+                hideLoading('recent-equipment-loading');
+            }
+        }
+
+        function displayRecentEquipment(data) {
+            const tbody = document.getElementById('recent-equipment-tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(eq => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${eq.sap_material_no || ''}</td>
+                    <td>${eq.bfm_equipment_no}</td>
+                    <td>${eq.description}</td>
+                    <td>${eq.site_location || ''}</td>
+                    <td>${eq.pm_frequency}</td>
+                    <td>${eq.created_date ? new Date(eq.created_date).toLocaleDateString() : ''}</td>
+                `;
+            });
+        }
+
+        // CSV Export/Import Functions
+        window.exportEquipmentCSV = async function() {
+            if (!isConnected) {
+                showMessage('equipment-list', 'error', 'Cannot export CSV - Firebase not connected');
+                return;
+            }
+            
+            try {
+                await loadEquipmentData(); // Ensure we have latest data
+                
+                // Convert to CSV format
+                const csvData = equipmentData.map(eq => ({
+                    '(SAP) Material No.': eq.sap_material_no || '',
+                    '(BFM) Equipment No.': eq.bfm_equipment_no,
+                    'Description': eq.description,
+                    'Site Location': eq.site_location || '',
+                    'Last PM Completion Date': eq.last_pm_date || '',
+                    'Next PM Completion Date': eq.next_pm_date || '',
+                    'PM Frequency': eq.pm_frequency
+                }));
+                
+                // Convert to CSV string
+                const headers = Object.keys(csvData[0] || {});
+                const csvContent = [
+                    headers.join(','),
+                    ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+                ].join('\n');
+                
+                // Download file
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `SAP_AIT_AssetList_Updated_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showMessage('equipment-list', 'success', '✅ Updated equipment CSV exported successfully!');
+            } catch (error) {
+                console.error('Error exporting CSV:', error);
+                showMessage('equipment-list', 'error', '❌ Failed to export CSV: ' + error.message);
+            }
+        }
+
+        window.importEquipmentCSV = function() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv';
+            input.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const text = await file.text();
+                    const lines = text.split('\n');
+                    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                    
+                    // Clear existing equipment
+                    const equipmentRef = ref(database, 'equipment');
+                    await set(equipmentRef, {});
+                    
+                    let importCount = 0;
+                    
+                    // Import new equipment
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+                        
+                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                        const equipmentData = {};
+                        
+                        headers.forEach((header, index) => {
+                            switch(header) {
+                                case '(SAP) Material No.':
+                                case '(SAP) Material No. ':
+                                    equipmentData.sap_material_no = values[index] || '';
+                                    break;
+                                case '(BFM) Equipment No.':
+                                    equipmentData.bfm_equipment_no = values[index] || '';
+                                    break;
+                                case 'Description':
+                                    equipmentData.description = values[index] || '';
+                                    break;
+                                case 'Site Location':
+                                    equipmentData.site_location = values[index] || '';
+                                    break;
+                                case 'Last PM Completion Date':
+                                    equipmentData.last_pm_date = values[index] || '';
+                                    break;
+                                case 'Next PM Completion Date':
+                                    equipmentData.next_pm_date = values[index] || '';
+                                    break;
+                                case 'PM Frequency':
+                                    equipmentData.pm_frequency = values[index] || 'Monthly';
+                                    break;
+                            }
+                        });
+                        
+                        if (equipmentData.bfm_equipment_no && equipmentData.description) {
+                            equipmentData.created_date = new Date().toISOString();
+                            
+                            const newEquipmentRef = push(equipmentRef);
+                            await set(newEquipmentRef, equipmentData);
+                            importCount++;
+                        }
+                    }
+                    
+                    showMessage('equipment-list', 'success', `✅ Imported ${importCount} equipment records successfully!`);
+                    await loadEquipmentData();
+                    
+                } catch (error) {
+                    console.error('Error importing CSV:', error);
+                    showMessage('equipment-list', 'error', '❌ Failed to import CSV: ' + error.message);
+                }
+            };
+            input.click();
+        }
+
+        // Reports
+        window.generateReport = async function() {
+            if (!isConnected) {
+                showMessage('reports', 'error', 'Cannot generate report - Firebase not connected');
+                return;
+            }
+            
+            try {
+                const reportType = document.getElementById('report-type').value;
+                const reportDate = new Date(document.getElementById('report-date').value);
+                
+                // Calculate date ranges
+                let startDate, endDate, periodTitle, plannedPMs;
+                
+                if (reportType === 'Weekly') {
+                    const dayOfWeek = reportDate.getDay();
+                    startDate = new Date(reportDate);
+                    startDate.setDate(reportDate.getDate() - dayOfWeek);
+                    endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + 6);
+                    
+                    const weekNumber = getWeekNumber(startDate);
+                    periodTitle = `THIS WEEK ${weekNumber}`;
+                    plannedPMs = 110;
+                } else if (reportType === 'Monthly') {
+                    startDate = new Date(reportDate.getFullYear(), reportDate.getMonth(), 1);
+                    endDate = new Date(reportDate.getFullYear(), reportDate.getMonth() + 1, 0);
+                    
+                    periodTitle = `THIS MONTH ${reportDate.getMonth() + 1}`;
+                    plannedPMs = 476;
+                } else {
+                    startDate = new Date(reportDate.getFullYear(), 0, 1);
+                    endDate = new Date(reportDate);
+                    
+                    periodTitle = `YEAR to DATE ${reportDate.getFullYear()}`;
+                    const daysElapsed = Math.floor((reportDate - startDate) / (24 * 60 * 60 * 1000)) + 1;
+                    const weeksElapsed = daysElapsed / 7;
+                    plannedPMs = Math.floor(weeksElapsed * 110);
+                }
+                
+                const startDateStr = startDate.toISOString().split('T')[0];
+                const endDateStr = endDate.toISOString().split('T')[0];
+                
+                // Get PM data
+                const pmRef = ref(database, 'pm_completions');
+                const snapshot = await get(pmRef);
+                
+                let totalPMs = 0;
+                let totalHours = 0;
+                const pmByFrequency = {
+                    'Weekly': 0, 'Bi-Monthly': 0, 'Monthly': 0,
+                    'Quarterly': 0, 'Six Month': 0, 'Annual': 0
+                };
+                const employeeCounts = {};
+                employees.forEach(emp => employeeCounts[emp] = 0);
+                
+                if (snapshot.exists()) {
+                    const pms = Object.values(snapshot.val())
+                        .filter(pm => !pm.deleted && 
+                                     pm.completion_date >= startDateStr && 
+                                     pm.completion_date <= endDateStr);
+                    
+                    totalPMs = pms.length;
+                    totalHours = pms.reduce((sum, pm) => sum + (pm.hours_worked || 0), 0);
+                    
+                    pms.forEach(pm => {
+                        if (pmByFrequency.hasOwnProperty(pm.pm_type)) {
+                            pmByFrequency[pm.pm_type]++;
+                        }
+                        if (employeeCounts.hasOwnProperty(pm.technician_name)) {
+                            employeeCounts[pm.technician_name]++;
+                        }
+                    });
+                }
+                
+                const completionRate = plannedPMs > 0 ? Math.floor((totalPMs / plannedPMs) * 100) : 0;
+                
+                // Generate report content
+                const report = generateReportContent(
+                    periodTitle, totalPMs, plannedPMs, completionRate,
+                    totalHours, pmByFrequency, employeeCounts
+                );
+                
+                document.getElementById('report-content').textContent = report;
+                
+            } catch (error) {
+                console.error('Error generating report:', error);
+                showMessage('reports', 'error', '❌ Failed to generate report: ' + error.message);
+            }
+        }
+
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function generateReportContent(periodTitle, totalPMs, plannedPMs, completionRate, totalHours, pmByFrequency, employeeCounts) {
+            let report = "AIRBUS                PERFORMANCE REPORT                AIT\n";
+            report += "=".repeat(80) + "\n\n";
+            
+            report += `${periodTitle}\n`;
+            report += `Total Number of PMs Performed:      ${totalPMs.toString().padStart(3)}\n\n`;
+            
+            if (periodTitle.includes("WEEK")) {
+                report += `Planned Weekly PMs:                  ${plannedPMs.toString().padStart(3)}\n`;
+            } else if (periodTitle.includes("MONTH")) {
+                report += `Planned Monthly PMs:                 ${plannedPMs.toString().padStart(3)}\n`;
+            } else {
+                report += `Planned Yearly PMs:                  ${plannedPMs.toString().padStart(4)}\n`;
+            }
+            
+            report += `\nNumber of PM Hours Worked:           ${totalHours.toFixed(2).padStart(6)}\n\n`;
+            
+            // PM breakdown by frequency
+            report += `Annual PMs:        ${pmByFrequency['Annual'].toString().padStart(3)}      `;
+            report += `CMs Opened         Number of PMs Turned to CMs:    0\n`;
+            report += `Six Month PMs:     ${pmByFrequency['Six Month'].toString().padStart(3)}      `;
+            report += `0                  Number of CMs (Andon Board):    0\n`;
+            report += `Quarterly PMs:     ${pmByFrequency['Quarterly'].toString().padStart(3)}\n`;
+            report += `Monthly PMs:       ${pmByFrequency['Monthly'].toString().padStart(3)}      `;
+            report += `CMs Closed         Number of CM Hours Worked:     0.00\n`;
+            report += `Bi-Monthly PMs:    ${pmByFrequency['Bi-Monthly'].toString().padStart(3)}      `;
+            report += `0\n`;
+            report += `Weekly PMs:        ${pmByFrequency['Weekly'].toString().padStart(3)}\n\n`;
+            
+            // Completion rate
+            const completionColor = completionRate >= 90 ? "GREEN" : completionRate >= 70 ? "YELLOW" : "RED";
+            report += `                   ${completionRate}%\n`;
+            report += `               [${completionColor}]\n\n`;
+            
+            // Employee section
+            report += "PMs Completed Per Employee:\n";
+            report += "-".repeat(30) + "\n";
+            
+            employees.forEach(employee => {
+                const count = employeeCounts[employee] || 0;
+                report += `${employee}:`.padEnd(20) + count.toString().padStart(3) + "\n";
+            });
+            
+            return report;
+        }
+
+        window.printReport = function() {
+            const reportContent = document.getElementById('report-content').textContent;
+            if (!reportContent || reportContent.includes('No report generated yet')) {
+                showMessage('reports', 'error', 'No report to print. Generate a report first.');
+                return;
+            }
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>AIT Performance Report</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; margin: 20px; }
+                        pre { white-space: pre-wrap; }
+                    </style>
+                </head>
+                <body>
+                    <pre>${reportContent}</pre>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // Schedule download
+        window.downloadScheduleCSV = async function() {
+            const weekStart = document.getElementById('week-start').value;
+            if (!weekStart) {
+                showMessage('pm-schedule', 'error', 'Please select a week start date');
+                return;
+            }
+            
+            try {
+                const scheduleRef = ref(database, 'weekly_schedules');
+                const snapshot = await get(scheduleRef);
+                
+                if (snapshot.exists()) {
+                    const schedules = Object.values(snapshot.val())
+                        .filter(schedule => schedule.week_start_date === weekStart);
+                    
+                    if (schedules.length === 0) {
+                        showMessage('pm-schedule', 'error', 'No schedule found for this week');
+                        return;
+                    }
+                    
+                    // Create CSV data
+                    const csvData = schedules.map(schedule => {
+                        const equipment = equipmentData.find(eq => eq.bfm_equipment_no === schedule.bfm_equipment_no);
+                        return {
+                            'Week Start': schedule.week_start_date,
+                            'BFM Equipment No': schedule.bfm_equipment_no,
+                            'Description': equipment ? equipment.description : '',
+                            'Site Location': equipment ? equipment.site_location || '' : '',
+                            'PM Frequency': schedule.pm_frequency,
+                            'Assigned Technician': schedule.assigned_technician,
+                            'Status': schedule.status
+                        };
+                    });
+                    
+                    // Convert to CSV
+                    const headers = Object.keys(csvData[0]);
+                    const csvContent = [
+                        headers.join(','),
+                        ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+                    ].join('\n');
+                    
+                    // Download
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `PM_Schedule_Week_${weekStart}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showMessage('pm-schedule', 'success', '✅ Schedule CSV downloaded successfully!');
+                } else {
+                    showMessage('pm-schedule', 'error', 'No schedules found');
+                }
+            } catch (error) {
+                console.error('Error downloading schedule:', error);
+                showMessage('pm-schedule', 'error', '❌ Failed to download schedule CSV: ' + error.message);
+            }
+        }
+
+        window.generateAllSchedules = async function() {
+            if (!confirm('This will generate PM schedules for the rest of the year. Continue?')) {
+                return;
+            }
+            
+            try {
+                showLoading('schedule-loading');
+                
+                const today = new Date();
+                const endOfYear = new Date(today.getFullYear(), 11, 31);
+                const daysRemaining = Math.floor((endOfYear - today) / (24 * 60 * 60 * 1000));
+                const weeksRemaining = Math.floor(daysRemaining / 7) + 1;
+                
+                let totalScheduled = 0;
+                let currentWeekStart = new Date(today);
+                
+                for (let week = 0; week < weeksRemaining; week++) {
+                    const weekStartStr = currentWeekStart.toISOString().split('T')[0];
+                    
+                    // Generate priority-based schedule for this week
+                    const equipmentWithPriority = equipmentData.map(eq => {
+                        const priority = calculatePriority(eq.next_pm_date, eq.pm_frequency, currentWeekStart);
+                        return { ...eq, priority };
+                    }).sort((a, b) => b.priority - a.priority);
+                    
+                    // Schedule up to 110 PMs
+                    const targetPMs = Math.min(110, equipmentWithPriority.length);
+                    
+                    for (let i = 0; i < targetPMs; i++) {
+                        const equipment = equipmentWithPriority[i];
+                        const assignedTechnician = employees[i % employees.length];
+                        
+                        const scheduleData = {
+                            week_start_date: weekStartStr,
+                            bfm_equipment_no: equipment.bfm_equipment_no,
+                            pm_frequency: equipment.pm_frequency,
+                            assigned_technician: assignedTechnician,
+                            status: 'Pending',
+                            created_date: new Date().toISOString()
+                        };
+                        
+                        const scheduleRef = ref(database, 'weekly_schedules');
+                        const newScheduleRef = push(scheduleRef);
+                        await set(newScheduleRef, scheduleData);
+                        totalScheduled++;
+                    }
+                    
+                    // Move to next week
+                    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                }
+                
+                showMessage('pm-schedule', 'success', 
+                    `✅ Generated ${totalScheduled} PMs across ${weeksRemaining} weeks for the rest of ${today.getFullYear()}`);
+                
+            } catch (error) {
+                console.error('Error generating all schedules:', error);
+                showMessage('pm-schedule', 'error', '❌ Failed to generate all schedules: ' + error.message);
+            } finally {
+                hideLoading('schedule-loading');
+            }
+        }
+
+        // Utility Functions
+        function showMessage(tabId, type, message) {
+            const containerId = `${tabId.replace('-', '-')}message-container`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const messageClass = type === 'success' ? 'success-message' : 'error-message';
+            container.innerHTML = `<div class="${messageClass}">${message}</div>`;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.style.display = 'block';
+        }
+
+        function hideLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.style.display = 'none';
+        }
+
+        function showContainer(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.style.display = 'block';
+        }
+
+        function hideContainer(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.style.display = 'none';
+        }
     </script>
 </body>
 </html>
